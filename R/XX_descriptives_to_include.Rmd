@@ -1,0 +1,556 @@
+---
+title: "to addd"
+output: html_document
+---
+
+## References cited
+```{r}
+C <- readRDS("temp/C_nw.RDS")
+```
+
+Note: The following tables refer to the **cited references within** the corpus. Number of citation always refers to the citations recieved by the documents in the main corpus.
+
+```{r}
+cat("Number of unique references cited by the final corpus: ", nrow(C), " (after removing references cited less than 2 times)")
+```
+
+This appears to be rather low, only slightly more than 2x more than publications. However, the original number is way higher (ca 200.000), but after excluding (NW based) unconnected or marginally connected references, it drops substantially. This is an indicator that many of the references are cited very few times in the corpus, and the resulting ones represents a somewhat common core.
+
+```{r}
+C %>% gen_summary(top_n = 20, level = "REF", what = "count", plot = TRUE) 
+```
+
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+## Detailed look at the knowledge bases {.tabset}
+
+### Knowledge base 1
+```{r}
+paste0("Knowledge Base: ", names_kb[1, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 1) 
+```
+
+
+### Knowledge base 2
+```{r}
+paste0("Knowledge Base: ", names_kb[2, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 2) 
+```
+
+### Knowledge base 3
+```{r}
+paste0("Knowledge Base: ", names_kb[3, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 3) 
+```
+
+This appears to be the sustainable transitions internal knowledge base. Notice that it seems to be rather young, almost no central references pre-2000
+
+### Knowledge base 4
+```{r}
+paste0("Knowledge Base: ", names_kb[4, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 4) 
+```
+
+### Knowledge base 5
+```{r}
+paste0("Knowledge Base: ", names_kb[5, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 5) 
+```
+
+### Knowledge base 6
+```{r}
+paste0("Knowledge Base: ", names_kb[6, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 6) 
+```
+
+
+### Knowledge base 7
+```{r}
+paste0("Knowledge Base: ", names_kb[7, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 7) 
+```
+
+
+### Knowledge base 8
+```{r}
+paste0("Knowledge Base: ", names_kb[8, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 8) 
+```
+
+
+### Knowledge base 9
+```{r}
+paste0("Knowledge Base: ", names_kb[9, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 9) 
+```
+
+Institutional Sociology
+
+### Knowledge base 10
+```{r}
+paste0("Knowledge Base: ", names_kb[10, "com_kb_name"])
+
+C %>% gen_summary(top_n = 10, level = "REF", what = "general", plot = TRUE, select_com = 10) 
+```
+
+Entrepreneurship
+
+
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+
+
+
+## Research Areas in detail {.tabset}
+```{r}
+M1 <- M %>% 
+  filter(TC >= 10 | TC_year >= 5) %>%
+  filter(PY >= 1980 & PY <= 2019) %>%
+  filter(NR >= 10 & NR <= 750) %>%
+  filter( !(DT %in% c("Review", "Conference Paper")) )
+```
+
+Lets again classify them one-by-one. **Brief reminder:** Centrality in a bibliographic coupling network == representativeness != importance. Therefore, the central articles should be appropriate to characterize the kind of work done in the community, but are not necessarily the most important or influencial ones.
+
+### Research Area 1
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[1, "com_ra_name"])
+
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 1)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 1) 
+```
+
+#### Summary
+TBD.
+
+### Research Area 2
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[2, "com_ra_name"])
+
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 2)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 2) 
+```
+
+#### Summary
+TBD.
+
+### Research Area 3
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[3, "com_ra_name"])
+
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 3)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 3) 
+```
+
+#### Summary
+TBD.
+
+### Research Area 4
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[4, "com_ra_name"])
+
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 4)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 4) 
+```
+
+#### Summary
+TBD.
+
+### Research Area 5
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[5, "com_ra_name"])
+
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 5)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 5) 
+```
+
+#### Summary
+TBD.
+
+### Research Area 6
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[6, "com_ra_name"])
+
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 6)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 6) 
+```
+
+#### Summary
+TBD.
+
+### Research Area 7
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("Research Area: ", names_ra[7, "com_ra_name"])
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 7)
+```
+
+#### Most central publications
+```{r}
+M1 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 7) 
+```
+
+#### Summary
+TBD.
+
+
+# Zooming in the systainability transitions community {.tabset}
+
+```{r}
+names_ra_st <- tibble( 
+  com = 1:5,
+  com_ra2_name = c(
+    "01: MLP",
+    "02: SNM & TIS",
+    "03: ANT & Social construction",
+    "04: TM & Governance",
+    "05: Energy transition & community energy"
+    )
+)
+
+cols_ra_st <- names_ra_st %>% gg_color_select(com_ra2_name, pal = "Dark2") 
+
+
+M2 <- M %>%
+  filter(com == 1) %>%
+  select(-com, -dgr_int) %>%
+  rename(com = com2,
+         dgr_int = dgr_int2)
+
+M2 %<>% left_join(names_ra_st, by = "com")
+
+g <- readRDS("temp/g_bib.RDS")
+
+gx <- g %N>%
+  filter(com == 1) %>%
+  filter(TC >= 5 & NR >= 5) %>%
+  mutate(SR = SR %>% str_remove("'"),
+         dgr_ext = dgr - dgr_int)
+
+gxi <- list()
+for(i in 1:length(gx %N>% distinct(com2) %>% pull())){ # i = 1  
+  require(ggiraph)  
+  x <- gx %N>%
+    filter(com2 == i) %>%
+    arrange(desc(dgr_int)) %>% 
+    slice(1:100) %E>%
+    filter(weight >= quantile(weight, 0.75) )
+  
+   gxi[[i]]<- x %>%
+    ggraph(layout = 'fr') +
+    geom_edge_arc(curvature = 0.1, aes(width = weight), alpha = 0.1)  + 
+    geom_node_point(aes(colour = dgr_ext, size = dgr_int)  )  +
+    geom_point_interactive(aes(x, y,
+                               tooltip = SR, data_id = name, 
+                               size = dgr_int), alpha = 0.01) +
+    theme_graph(base_family = "Arial") +  
+    labs(title = paste0("ST sub-community: ", i),
+         subtitle = "Top-100 most internally central publications")
+}
+rm(gx, x, i)
+```
+
+```{r, fig.width=15, fig.height=15}
+# g  %>%
+#   ggraph(layout = "fr") + 
+#   geom_edge_density(aes(fill = weight)) +
+#   geom_edge_arc(curvature = 0.1, aes(width = weight), alpha = 0.2)  + 
+#   geom_node_point(aes(colour = factor(com2), size = dgr_int)  )  + 
+#   geom_node_text(aes(label = SR), repel = TRUE) +
+#   scale_color_brewer(palette = "Set1") +
+#     theme_graph(base_family = "Arial")
+```
+
+In the first scan it can clearly be seen, that the core of the sustainability transitions community resides in **com1**. So, lets zoom in a bit there and look at its internal structure.  So, I did a second round of community detection inside **com1** to identify the sub-communities within sustainability transitions. Lets see what we find. 
+
+## ST Research Areas Main Summary
+
+### Main Characteristics
+```{r}
+M2 %>%
+  group_by(com_ra2_name) %>%
+  summarise(n = n(), density_int = ((sum(dgr_int) / (n() * (n() - 1))) * 100) %>% round(3)) %>%
+  select(com_ra2_name, everything())
+```
+
+In this case, we find 6 ST internal communities.
+
+### Development
+```{r, fig.width = 15, fig.height=7.5}
+M2 %>%
+  mutate(PY = PY %>% as.numeric()) %>%
+  group_by(com_ra2_name, PY) %>% summarise(n = n()) %>% ungroup() %>%
+  group_by(PY) %>% mutate(n.PY = sum(n)) %>% ungroup() %>%
+  mutate(n.rel = n / n.PY) %>%
+  select(com_ra2_name, PY, n, n.rel) %>%
+  filter(PY >= 1990 & PY <= 2017) %>% 
+  arrange(com_ra2_name, PY) %>% 
+  plot_summary_timeline(y1 = n, y2 = n.rel, by = com_ra2_name, label = TRUE, pal = "Dark2",
+                        y1_text = "Number publications annually", y2_text = "Share of publications annually",
+                        PY_max = 2016)
+```
+
+### Topics
+```{r, fig.width = 15, fig.height=7.5}
+el_topic %>%
+  filter(com == 1) %>%
+  select(PY, topic, weight) %>%
+  mutate(PY = as.numeric(PY)) %>%
+  group_by(PY, topic) %>% summarise(weight = mean(weight)) %>% ungroup() %>%
+  group_by(PY) %>% mutate(weight.PY = sum(weight)) %>% ungroup() %>%
+  mutate(weight.rel = weight / weight.PY) %>%
+  select(PY, topic, weight, weight.rel) %>%
+  filter(PY >= 1990 & PY <= 2017) %>%
+  arrange(PY, topic) %>%
+  plot_summary_timeline(y1 = weight, y2 = weight.rel, by = topic, pal = "Paired", label = TRUE, 
+                        y1_text = "Topic popularity annualy", y2_text = "Share of topic annually")
+```
+
+### Knowledge Bases
+
+```{r}
+cit_kb_st <- readRDS("temp/cit_el.RDS")
+
+cit_kb_st %<>% 
+  select(EID, CR_SID, CR_PY) %>%
+  rename(SID = CR_SID) %>%
+  left_join(M %>% select(EID, PY, com, com2), by = "EID") %>%
+  rename(com_RA = com) %>%
+  left_join(C %>% select(SID, com), by = "SID") %>%
+  rename(com_KB = com) 
+
+cit_kb_st %<>% 
+  filter(com_RA == 1) %>%
+  group_by(PY, com_KB) %>%
+  summarize(TC = n()) %>%
+  ungroup() %>% 
+  drop_na() %>%
+  group_by(PY) %>%
+  mutate(TC.rel = TC / sum(TC)) %>%
+  arrange(PY, com_KB) %>%
+  ungroup()
+
+cit_kb_st %<>% left_join(names_kb, by = c("com_KB" = "com") )
+
+```
+
+```{r, fig.width = 15, fig.height=7.5}
+cit_kb_st %>% 
+  plot_summary_timeline(y1 = TC, y2 = TC.rel, by = com_kb_name, pal = "Paired", label = TRUE,
+                        y1_text = "Number citations recieved annually",  y2_text = "Share of citations recieved annually",
+                        PY_max = 2016)
+```
+
+
+
+### Connectivity between the research areas
+```{r}
+require(RNewsflow)
+g.agg2 <- g %N>%
+  filter(com == 1)
+  
+g.agg2 <- g.agg2 %N>%  
+  network.aggregate(by = "com2", edge.attribute = "weight", agg.FUN = sum)  %>%
+  as.undirected(mode = "collapse", edge.attr.comb = "sum") %>%
+  as_tbl_graph(directed = FALSE) %N>%
+  select(-name) %>%
+  mutate(id = 1:n()) %E>%
+  rename(weight = agg.weight) %>%
+  select(from, to, weight)
+
+g.agg2 <- g.agg2 %E>%
+  rename(weight_count = weight) %>%
+  mutate(weight = weight_count / (.N()$N[from] * .N()$N[to]) ) %>%
+  mutate(weight = (weight * 100) %>% round(4)) %N>%
+  mutate(dgr = centrality_degree(weights = weight))
+
+
+g.agg2 %N>%
+  arrange(com2) %>%
+  mutate(name = names_ra_st %>% pull(com_ra2_name),
+         color = cols_ra_st) %E>% 
+  filter(weight > 0 & from != to) %>%
+  filter(weight >= quantile(weight, 0.25) ) %>%
+  ggraph(layout = "circle") + 
+  geom_edge_arc(curvature = 0.075, aes(width = weight), alpha = 0.2)  + 
+  geom_node_point(aes(size = N), color = cols_ra_st)  + 
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_graph(base_family = "Arial")
+```
+
+
+
+## ST internal Research Areas in detail {.tabset}
+
+### Research Area 1
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("ST internal Research Area: ", names_ra_st[1, "com_ra2_name"])
+
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 1)
+```
+
+#### Most central publications
+```{r}
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 1) 
+```
+
+#### Internal network structure
+```{r}
+girafe(ggobj = gxi[[1]], width_svg = 8, height_svg = 6) %>% 
+    girafe_options(opts_zoom(max = 4), opts_tooltip(opacity = 0.7) )
+```
+
+#### Summary
+TBD.
+
+
+### Research Area 2
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("ST internal Research Area: ", names_ra_st[2, "com_ra2_name"])
+
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 2)
+```
+
+#### Most central publications
+```{r}
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 2) 
+```
+
+#### Internal network structure
+```{r}
+girafe(ggobj = gxi[[2]], width_svg = 8, height_svg = 6) %>% 
+    girafe_options(opts_zoom(max = 4), opts_tooltip(opacity = 0.7) )
+```
+
+#### Summary
+TBD.
+
+### Research Area 3
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("ST internal Research Area: ", names_ra_st[3, "com_ra2_name"])
+
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 3)
+```
+
+#### Most central publications
+```{r}
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 3) 
+```
+
+#### Internal network structure
+```{r}
+girafe(ggobj = gxi[[3]], width_svg = 8, height_svg = 6) %>% 
+    girafe_options(opts_zoom(max = 4), opts_tooltip(opacity = 0.7) )
+```
+
+#### Summary
+TBD.
+
+### Research Area 4
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("ST internal Research Area: ", names_ra_st[4, "com_ra2_name"])
+
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 4)
+```
+
+#### Most central publications
+```{r}
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 4) 
+```
+
+#### Internal network structure
+```{r}
+girafe(ggobj = gxi[[4]], width_svg = 8, height_svg = 6) %>% 
+    girafe_options(opts_zoom(max = 4), opts_tooltip(opacity = 0.7) )
+```
+
+#### Summary
+TBD.
+
+### Research Area 5
+
+#### Most central authors, journals, institutions, most cited references
+```{r}
+paste0("ST internal Research Area: ", names_ra_st[5, "com_ra2_name"])
+
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "general", plot = TRUE, select_com = 5)
+```
+
+#### Most central publications
+```{r}
+M2 %>% gen_summary(top_n = 10, level = "PUB", what = "top", plot = TRUE, select_com = 5) 
+```
+
+#### Internal network structure
+```{r}
+girafe(ggobj = gxi[[5]], width_svg = 8, height_svg = 6) %>% 
+    girafe_options(opts_zoom(max = 4), opts_tooltip(opacity = 0.7) )
+```
+
+#### Summary
+TBD.
+
