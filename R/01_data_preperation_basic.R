@@ -24,48 +24,37 @@ library(tidygraph)
 ############################################################################
 
 # Load bibliographic data
-file_list <- dir(path = '../input/', pattern = 'scopus_.*\\.csv') 
-file_list <- paste0('../input/', file_list)
-
-# Reading data
-M <- read_collection(file_list, bib_source = 'scopus', bib_format = 'csv', 
-#                     TC_min = TC_min,
-#                     PY_min = PY_min, 
-#                     n_max = n_max, 
-                     filter_DT = 'ARTICLE') 
+M <- convert2df(file = 'data/EIST_scopus.csv', dbsource = "scopus", format = "csv")
 
 
 # Restrict variables
 M  %<>% select(-Molecular.Sequence.Numbers, -Chemicals.CAS, -Tradenames, -Manufacturers, -Sponsors, 
                -Conference.name, -Conference.date, -Conference.code, -Conference.location,
-               -CODEN, -PubMed.ID, -LA, -Publication.Stage, 
-               -starts_with('Funding.Text'))
+               -CODEN, -PubMed.ID, -LA, -Publication.Stage)
 
 # Extract Meta Tags #TODO: Maybe more?
 M %<>% metaTagExtraction(Field = "AU_CO", aff.disamb = TRUE, sep = ";")
+M %<>% metaTagExtraction(Field = "AU1_CO", aff.disamb = TRUE, sep = ";")
+M %<>% metaTagExtraction(Field = "AU1_UN", aff.disamb = TRUE, sep = ";")
+M %<>% metaTagExtraction(Field = "SR", aff.disamb = TRUE, sep = ";")
+M %<>% metaTagExtraction(Field = "CR_AU", aff.disamb = TRUE, sep = ";")
+M %<>% metaTagExtraction(Field = "CR_SO", aff.disamb = TRUE, sep = ";")
+# create label
+M %<>% rownames_to_column('XX') %>% 
+  mutate(XX = paste(str_extract(XX, pattern = ".*\\d{4}"), str_sub(TI, 1,25)) %>% str_replace_all("[^[:alnum:]]", " ") %>% str_squish() %>% str_replace_all(" ", "_") %>% make.unique(sep='_'))  
+
+rownames(M) <- M$XX
 
 # Save 
-#M %<>% column_to_rownames('XX')
-M %>% saveRDS("../temp/M_full.RDS")
-
-## Restrict M
-M %<>%
-  filter(TC >= TC_min & PY >= PY_min & batch <= 51) %>%
-  group_by(batch) %>%
-  slice(1:n_max) %>%
-  ungroup()
-
-# Save 
-M %<>% column_to_rownames('XX')
+#€M %<>% column_to_rownames('XX')
 M %>% saveRDS("../temp/M.RDS")
-rm(file_list, read_collection, M_full)
 
 ############################################################################
 # Networks Bibliographic
 ############################################################################
 # M <- readRDS("../temp/M.RDS")
 
-mat_bib <- M  %>% biblioNetwork(analysis = "coupling", network = "references", sep = ";", shortlabel = FALSE)
+mat_bib <- M  %>% biblioNetwork(analysis = "coupling", network = "references", sep = ";", shortlabel =  FALSE)
 # mat_bib %>% saveRDS("../temp/mat_bib.RDS")
 # mat_bib <- readRDS("../temp/mat_bib.RDS")
 
@@ -80,34 +69,27 @@ g_bib <- g_bib_save %E>%
   filter(weight >= cutof_edge_bib) %N>%
   # filter(percent_rank(weight) >= cutof_edge_pct_bib) %N>%
   filter(!node_is_isolated()) %N>%
-  mutate(dgr = centrality_degree(weights = weight)) %N>%
-  # filter(dgr >= cutof_node_bib) %>%
-  filter(percent_rank(dgr) >= cutof_node_pct_bib)
+  mutate(dgr = centrality_degree(weights = weight)) 
+  # %N>% filter(dgr >= cutof_node_bib) 
+  # %N>% filter(percent_rank(dgr) >= cutof_node_pct_bib)
 
 # # Inspect
-# g_bib %N>% mutate(dgr = centrality_degree(weights = weight)) %>% as_tibble() %>% skimr::skim()
-# g_bib %E>% as_tibble() %>% skimr::skim()
+g_bib %N>% mutate(dgr = centrality_degree(weights = weight)) %>% as_tibble() %>% skimr::skim()
+g_bib %E>% as_tibble() %>% skimr::skim()
 
 # Community Detection
 g_bib <- g_bib %N>%
-  # Level 1
   mutate(com = group_louvain(weights = weight)) %>%
-  # Level 2
   morph(to_split, com) %>% 
   mutate(dgr_int = centrality_degree(weights = weight)) %N>%
-  mutate(com2 = group_louvain(weights = weight)) %>%
-  unmorph() %>%
-  morph(to_split, com, com2) %>% 
-  mutate(dgr_int2 = centrality_degree(weights = weight)) %>%
-  unmorph() 
+  unmorph()
+
 
 # Community size restriction
 g_bib <- g_bib %N>%
   add_count(com, name = 'com_n') %>%
-  add_count(com, com2, name = 'com2_n') %>%
   mutate(com = ifelse(com_n >= com_size_bib, com, NA) ) %>%
-  mutate(com2 = ifelse(com2_n >= com2_size_bib, com, NA) ) %>%
-  select(-com_n, -com2_n)  
+  select(-com_n)  
 
 # Delete nodes withou community
 g_bib <- g_bib %N>%
@@ -121,7 +103,7 @@ g_bib <- g_bib %N>%
 g_bib %>% saveRDS("../temp/g_bib.RDS")
 
 ### Merge with main data
-M_bib <- M %>% select(XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(name, dgr, com, dgr_int, com2, dgr_int2), by = c('XX' = 'name')) %>%
+M_bib <- M %>% select(XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(name, dgr, com, dgr_int), by = c('XX' = 'name')) %>%
   distinct(XX, .keep_all = TRUE) 
 
 # Save and remove
@@ -159,7 +141,7 @@ rm(mat_bib, g_bib, com_size_bib, cutof_edge_bib, cutof_node_bib, g_bib_agg)
 
 mat_cit <- M %>%
   as.data.frame() %>% 
-  biblioNetwork(analysis = "co-citation", network = "references", sep = ";", shortlabel = FALSE)
+  biblioNetwork(analysis = "co-citation", network = "references", sep = ";", shortlabel = TRUE)
 
 # mat_cit %>% saveRDS("../temp/mat_cit.RDS")
 # mat_cit <- readRDS("../temp/mat_cit.RDS")
@@ -253,24 +235,16 @@ saveRDS(el_2m, "../temp/el_2m.RDS")
 rm(m_2m, g_2m, el_2m)
 
 ############################################################################
-# Overall summary
-############################################################################
-results <- M %>% biblioAnalysis(sep = ";")
-
-# Save 
-results %>% saveRDS("../temp/results.RDS")
-rm(results)
-
-############################################################################
 # Locan citations
 ############################################################################
-# CR <- M %>% citations(field = "article", sep = ";")
-# CR %>% saveRDS("../temp/CR.RDS")
-# rm(CR)
-# 
-# CRL <- M %>% localCitations(sep = ";") # For some reason takes forever...
-# CRL %>% saveRDS("../temp/CRL.RDS")
-# rm(CRL)
+
+CR <- M %>% citations(field = "article", sep = ";")
+CR %>% saveRDS("../temp/CR.RDS")
+
+CRL <- M %>% localCitations(sep = ";") # For some reason takes forever...
+CRL %>% saveRDS("../temp/CRL.RDS")
+
+rm(CR, CRL)
 
 ############################################################################
 # Historical citation
@@ -278,8 +252,8 @@ rm(results)
 
 # Create a historical citation network
 histResults <- M %>% histNetwork(sep = ";")
-histResults %>% saveRDS("../temp/histResults.RDS")
 histResults %>% histPlot(n = 50, size = 10, labelsize = 5)
+histResults %>% saveRDS("../temp/histResults.RDS")
 
 rm(histResults)
 
@@ -294,7 +268,9 @@ rm(histResults)
 ############################################################################
 # Other stuff
 ############################################################################
-M_threefield <- M %>% as.data.frame() %>% threeFieldsPlot()
+M_threefield <- M %>% as.data.frame() %>% threeFieldsPlot(fields = c("AU", "DE", "CR_SO"), n = c(20, 20, 10))
+M_threefield
+
 M_threefield %>% saveRDS("../temp/M_threefield.RDS")
 rm(M_threefield)
 
@@ -311,76 +287,109 @@ library(tidytext)
 library(topicmodels)
 library(textstem)
 
-# read
-M_full <- readRDS("../temp/M_full.RDS") %>% as_tibble()
-
 # Extract text to work with
-text_tidy <- M_full %>% 
+text_tidy <- M %>% 
   as_tibble() %>%
   select(XX, AB) %>%
   rename(document = XX) 
 
-rm(M_full)
-
 # Some initial cleaning
 text_tidy %<>% 
   mutate(AB = AB %>% 
+           str_to_lower() %>%
            str_replace_all("&", "-and-") %>%
            str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
-           str_squish() %>%
            iconv(to = "UTF-8", sub = "byte") %>%
-           str_remove("�.*") 
+           str_remove_all("�.*") %>%
+           str_remove_all('[:digit:]') %>%
+           str_squish() 
   )  %>%
   drop_na() 
 
 # Unnesting
+#text_tidy %<>% 
+#  unnest_tokens(term, AB) 
+
 text_tidy %<>% 
-  unnest_tokens(term, AB) 
+  unnest_ngrams(term, AB, n_min = 1, n = 3)
 
 # filtering
-text_tidy %<>%
-  filter(str_length(term) > 2)
+#text_tidy %<>%
+#  filter(str_length(term) > 2)
+
+text_tidy %<>% 
+  separate(term, c("word1", "word2", "word3"), sep = " ")
 
 # Stopwords
-stopwords_own <- tibble(
-  word =c("study", "paper", "result", "model", "approach", "article", "author", "method", "understand", "focus", "examine", "aim", "argue", "identify",
+stop_words_own <- tibble(
+  word =c("rights","reserved" , "study", "studies", "this", "paper", "result", "model", "approach", "article", "author", "method", "understand", "focus", "examine", "aim", "argue", "identify",
                    "increase", "datum", "potential", "explore", "include", "issue", "propose", "address", "apply", "require", "analyse", "relate", "finding",
                    "analyze", "discuss", "contribute", "publish", "involve", "draw", "lead", "exist", "set", "reduce", "create", "form", "explain", "play",
                    "affect", "regard", "associate", "establish", "follow", "conclude", "define", "strong", "attempt", "finally", "elsevier", "offer",
-                   "taylor", "francis", "copyright", "springer", "wiley", "emerald", "copyright"))
+                   "taylor", "francis", "copyright", "springer", "wiley", "emerald", "copyright", "b.v"),
+  lexicon = 'own') %>% 
+  bind_rows(stop_words)
 
 text_tidy %<>%
-  anti_join(stop_words, by = c('term' = 'word')) %>%
-  anti_join(stopwords_own, by = c('term' = 'word')) %>%
-  count(document, term, sort = TRUE) 
-rm(stopwords_own)
+  filter(!word1 %in% stop_words_own$word,
+         !word2 %in% stop_words_own$word,
+         !word3 %in% stop_words_own$word,
+         is.na(word1) | str_length(word1) > 2,
+         is.na(word2) | str_length(word2) > 2,
+         is.na(word3) | str_length(word3) > 2)
 
 # Lemmatizing 
 lemma_own <- tibble( # WORK IN THAT !!!!!!!!!!
   token = c("institutional", "technological", "national", "regional", "sustainable",    "environmental", "political"),
   lemma = c("institution",   "technology",    "nation",   "region",   "sustainability", "environment",   "policy"))
+    
+lemma_new <- lexicon::hash_lemmas %>% 
+  filter(token != 'data') %>%
+  anti_join(lemma_own, by = 'token') %>%
+  bind_rows(lemma_own)
 
 text_tidy %<>%
-  mutate(term = term %>% lemmatize_words(dictionary = lexicon::hash_lemmas %>% filter(token != 'data') %>%
-                                           anti_join(lemma_own, by = 'token') %>%
-                                           bind_rows(lemma_own) ))
+  mutate(word1 = word1 %>% lemmatize_words(dictionary = lemma_new),
+         word2 = word2 %>% lemmatize_words(dictionary = lemma_new),
+         word3 = word3 %>% lemmatize_words(dictionary = lemma_new))
+
+text_tidy %<>%
+  unite(term, word1, word2, word3, na.rm = TRUE, sep = " ")
+
+# TFIDF weighting
+text_tidy %<>%
+  count(document, term) %>%
+  bind_tf_idf(term, document, n)
+
 text_tidy %>% saveRDS("../temp/text_tidy.RDS")
-rm(lemma_own)
+
+rm(stop_words_own, lemma_own, lemma_new)
 
 # TTM
 text_dtm <- text_tidy %>%
-  cast_dtm(document, term, n) %>%
-  tm::removeSparseTerms(sparse = .99)
+  cast_dtm(document, term, n) 
+# %>% tm::removeSparseTerms(sparse = .99)
+
+# Finding nummer of topics
+library("ldatuning")
+
+find_topics <- text_dtm %>% 
+  FindTopicsNumber(
+    topics = seq(from = 2, to = 15, by = 1),
+    metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+    method = "Gibbs",
+    control = list(seed = 77),
+    mc.cores = 4L,
+    verbose = TRUE
+)
+
+find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
 
 # LDA
 text_lda <- text_dtm %>% LDA(k = 6, method= "Gibbs", control = list(seed = 1337))
 text_lda %>% saveRDS("../temp/text_lda.RDS")
 
 ### LDA Viz
-text_dtm <- text_tidy %>%
-  cast_dtm(document, term, n) %>%
-  tm::removeSparseTerms(sparse = .99)
-
 library(LDAvis)
 json_lda <- topicmodels_json_ldavis(fitted = text_lda, 
                                     doc_dtm = text_dtm, 

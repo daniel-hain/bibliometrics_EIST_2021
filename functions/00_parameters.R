@@ -18,14 +18,13 @@ PY_min <-1990 # Start year
 
 # Initial Filter
 cutof_edge_bib <- 2
-cutof_node_bib <- 50
+cutof_node_bib <- 5
 
-cutof_edge_pct_bib <- 0.10
-cutof_node_pct_bib <- 0.10
+cutof_edge_pct_bib <- 0.00
+cutof_node_pct_bib <- 0.00
 
 # community detection
-com_size_bib <- 50
-com2_size_bib <- 10
+com_size_bib <- 10
 
 ############################################################################
 #  Network Co-Citation
@@ -33,10 +32,10 @@ com2_size_bib <- 10
 
 # Initial Filter
 cutof_edge_cit <- 2
-cutof_node_cit <- 50
+cutof_node_cit <- 10
 
-cutof_edge_pct_cit <- 0.10
-cutof_node_pct_cit <- 0.10
+cutof_edge_pct_cit <- 0.05
+cutof_node_pct_cit <- 0.05
 
 # community detection
-com_size_cit <- 400
+com_size_cit <- 100

@@ -3,7 +3,7 @@ title: "Transitions Bibliometrics 2020"
 author: "Daniel S. Hain"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document:
+  html_notebook:
     df_print: paged
     toc: yes
     toc_depth: 3
@@ -58,93 +58,6 @@ M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
 M %<>% semi_join(M_bib, by = 'XX')
 ```
 
-
-## Corpus Creation
-1. Scopus download of documents retrieved from search string from Markard et al. (2012). Limited to `LANGUAGE = ENGLISH AND TYPE = (ARTICLE)`.
-2. Selecting "seed" publications. 1% most cited per year. Ex-post manual exclusion. Results in 53 seed papers
-3. Retrieving for each seed 1000 publications with most shared references. Again, same limitations as in step 1. 
-4. Adittional ex. post filtering. First, based on citations recieved and connectivity in bibliographic coupling network. Namely, I excluded edges in the bottom 10% quantile of the weight distribution (Jaccard weighted), also unconnected and nodes in the bottom 10% of the degree distribution. Lastly,after the community detection exercise, I excluded nodes in communities of less than 500 members. 
-
-That leads to an overall corpus size of: 
-```{r}
-cat("Number of unique publications in the final corpus: ", nrow(M))
-```
-
-## Seed Paper
-```{r}
-# NOTE: NOT WORKING TILL WE GET THE SEED PAPER LIST
-
-# M_seed <- M %>%
-#   filter(UT %in% seed_UT) %>%
-#   mutate(TI = TI%>% str_trunc(300),
-#          SO = SO %>% str_trunc(50),
-#          TC_year = (TC / (2019 - PY + 1)) %>% round())  %>%
-#   select(AU, PY, TI, SO, TC, TC_year) %>%
-#   arrange(desc(TC_year))
-# 
-# 
-# seed %<>% mutate(n = 1:n(),
-#                  SR = paste0(n, ": ", AU, ", (", PY, ") ", (SO %>% str_trunc(50)), ", Cited: ", TC, "Cited/year: ", TC_year)) %>% 
-#   select(n, SR, everything())
-# 
-# seed[1, "SR"] <- seed[1, "TI"]
-```
-
-In the following, we more in detail investigate the seed papers. 
-
-### List of all seed papers
-
-NOTE: NEEDS BETTER FORMAT
-
-```{r}
-seed <- convert2df(file = "../../input/seeds.csv", dbsource = "scopus", format = "csv") %>% as_tibble()
-```
-
-```{r}
-seed %<>% 
-  mutate(NR = 1: n(),
-         TC_year = TC / (2019 + 1 - PY),
-         AU = AU %>% str_trunc(25),
-         TI = TI %>% str_trunc(75)) %>%
-  select(NR, AU, PY, TI, J9, TC, TC_year) %>%
-  arrange(desc(TC_year))
-```
-
-
-```{r}
-seed %>% kable() %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
-```
-
-```{r}
-rm(seed)
-```
-
-
-### Seep papers and corpus size
-
-Generally, 50 x 1000 = 50.000 documents downloaded. However, due to an overlap of publications with most shared references to seed papers, final corpus is smaller. 
-
-```{r, fig.height=5, fig.width=10}
-# TODO: Add paper name
-plot <- M %>%
-  count(batch) %>%
-  arrange(batch) %>%
-  mutate(n_corpus = n %>% cumsum()) %>%
-  ggplot( aes(x = batch, y = n_corpus, text = batch) ) +
-  geom_point() +
-  scale_color_brewer(palette="Dark2")
-
-plot %>% plotly::ggplotly(tooltip = c("x", "y") )
-```
-
-
-<!-- ####################################################################################### -->
-<!-- ####################################################################################### -->
-<!-- ############################# NEXT PART ############################################### -->
-<!-- ####################################################################################### -->
-<!-- ####################################################################################### -->
-
 # General Overview over the ST and surrounding fields
 
 ## Main Indicators: Publications, Authors, Countries
@@ -152,7 +65,7 @@ plot %>% plotly::ggplotly(tooltip = c("x", "y") )
 To start with, a general overview over the documents in the corpus
 
 ```{r}
-results<- readRDS("../../temp/results.RDS") 
+results <- biblioAnalysis(M, sep = ";")
 
 results %>% summary(k = 10, pause = FALSE)
 ```
@@ -204,17 +117,19 @@ rm(histResults)
 
 ### Authors, Themes & Journals
 
+* Not done yet
+
 ```{r, fig.width=20, fig.height=17.5}
-M_threefield <- readRDS("../../temp/M_threefield.RDS") 
+# M_threefield <- readRDS("../../temp/M_threefield.RDS") 
 ```
 
 ```{r, fig.width=17.5, fig.height=17.5}
-M_threefield
+# M_threefield
 ```
 
 
 ```{r}
-rm(M_threefield)
+# rm(M_threefield)
 ```
 
 
@@ -281,7 +196,7 @@ text_lda %>% tidy(matrix = "gamma") %>%
 ## LDAViz
 Here you find a nice way of exploring topics via the `LDAVIz` methodology of visulizing the result of an LDA. It dispolays all topics in a 2 dimensional TSNE (similar to PCA, but optimized for graphical illustration in 2d), and also gives a nice visual representation over the topics top-word distribution and overall frequencies of this words in the corpus. The $\lambda$ parameter regulates the importance-ordering of the topwords. High $\lambda$ order words by the highest propability to appear in the topic to the lowest (independent of the overall word popularity in the corpus), whle low $\lambda$ emphasize words which are very specific to the topic, and rarely appear in others.
 
-Play a bit around. Since it would be here a bit condensed, better check it out  [HERE](https://daniel-hain.github.io/transitions_bibliometrics_2019/output/LDAviz/) in fullscreen for a better overview.
+Play a bit around. Since it would be here a bit condensed, better check it out  [HERE](https://daniel-hain.github.io/ibliometrics_EIST_2021/output/LDAviz/) in fullscreen for a better overview.
 
 <!-- ####################################################################################### -->
 <!-- ####################################################################################### -->
@@ -380,7 +295,6 @@ el_2m %<>%
 
 ```{r, fig.width = 15, fig.height=7.5}
 el_2m %>%   
-  filter(PY >= 1995) %>%
   complete(com_name, PY, fill = list(TC = 0, TC_rel = 0)) %>%
   plot_summary_timeline(y1 = TC, y2 = TC_rel, t = PY, by = com_name, pal = "Dark2", label = TRUE,
                         y1_text = "Number citations recieved annually",  y2_text = "Share of citations recieved annually")
@@ -482,7 +396,7 @@ g_agg %E>%
   filter(weight > 0 & from != to) %>%
   filter(weight >= quantile(weight, 0.25) )  %>%
   ggraph(layout = "circle") + 
-  geom_edge_arc(strenght = 0.075, aes(width = weight), alpha = 0.2)  + 
+  geom_edge_fan(strenght = 0.075, aes(width = weight), alpha = 0.2)  + 
   geom_node_point(aes(size = N, color = factor(com)))  + 
   geom_node_text(aes(label = com), repel = TRUE) +
   theme_graph(base_family = "Arial") +
