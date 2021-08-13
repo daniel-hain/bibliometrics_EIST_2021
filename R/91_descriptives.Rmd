@@ -55,7 +55,7 @@ knitr::opts_chunk$set(echo = FALSE,
 M <- readRDS("../../temp/M.RDS") %>% as_tibble()
 M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
 
-M %<>% semi_join(M_bib, by = 'XX')
+#M %<>% semi_join(M_bib, by = 'XX')
 ```
 
 # General Overview over the ST and surrounding fields
@@ -114,6 +114,7 @@ histResults %>% histPlot(n =50, size = 10, labelsize = 7.5)
 ```{r}
 rm(histResults)
 ```
+
 
 ### Authors, Themes & Journals
 
@@ -187,7 +188,7 @@ text_lda %>% tidy(matrix = "gamma") %>%
   group_by(PY) %>% mutate(weight_PY = sum(weight)) %>% ungroup() %>%
   mutate(weight_rel = weight / weight_PY) %>%
   select(PY, topic, weight, weight_rel) %>%
-  filter(PY >= 1998 & PY <= 2019) %>%
+  filter(PY >= 1998 & PY <= 2020) %>%
   arrange(PY, topic) %>%
   plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic,  pal = "Paired", label = FALSE,
                         y1_text = "Topic popularity annualy", y2_text = "Share of topic annually")
