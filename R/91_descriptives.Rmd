@@ -196,7 +196,7 @@ text_lda %>% tidy(matrix = "gamma") %>%
 ## LDAViz
 Here you find a nice way of exploring topics via the `LDAVIz` methodology of visulizing the result of an LDA. It dispolays all topics in a 2 dimensional TSNE (similar to PCA, but optimized for graphical illustration in 2d), and also gives a nice visual representation over the topics top-word distribution and overall frequencies of this words in the corpus. The $\lambda$ parameter regulates the importance-ordering of the topwords. High $\lambda$ order words by the highest propability to appear in the topic to the lowest (independent of the overall word popularity in the corpus), whle low $\lambda$ emphasize words which are very specific to the topic, and rarely appear in others.
 
-Play a bit around. Since it would be here a bit condensed, better check it out  [HERE](https://daniel-hain.github.io/ibliometrics_EIST_2021/output/LDAviz/) in fullscreen for a better overview.
+Play a bit around. Since it would be here a bit condensed, better check it out  [HERE](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz/) in fullscreen for a better overview.
 
 <!-- ####################################################################################### -->
 <!-- ####################################################################################### -->
