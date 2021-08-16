@@ -104,6 +104,7 @@ rm(CR)
 #M %>% gen_summary(top_n = 20, level = "PUB", what = "count", plot = TRUE) 
 ```
 
+<!-- 
 ## Conceptual trajectories: Historical citation path analysis
 
 ```{r}
@@ -119,6 +120,7 @@ histResults %>% histPlot(n =50, size = 10, labelsize = 7.5)
 rm(histResults)
 ```
 
+---> 
 
 ### Authors, Themes & Journals
 
