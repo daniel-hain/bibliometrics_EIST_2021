@@ -159,7 +159,7 @@ mycol_lda <- text_lda %>% tidy(matrix = "beta") %>% gg_color_select(cat = topic,
 ```
 
 
-I by now created some topic modelling. The results are now more fine-tuned, but there is still room for some improvement. We ran a LDA on the titles + abstracts of our corpus, aiming at identifying 10 topics (some different numbers of topics to generate shows that 10 result in good results, more topics lead to too much overlap between them)
+I by now created some topic modelling. The results are now more fine-tuned, but there is still room for some improvement. We ran a LDA on the titles + abstracts of our corpus, aiming at identifying 6 topics (different evaluation methods point towards this number)
 
 ## Topics by topwords
 ```{r, fig.width=17.5, fig.height=15} 
@@ -274,8 +274,6 @@ C_nw %>% group_by(com) %>%
 ```
 ### Development of Knowledge Bases
 
-Some issues atm, not working
-
 ```{r}
 el_2m<- readRDS("../../temp/el_2m.RDS")
 ```
@@ -325,6 +323,10 @@ The intuition here is that references which are frequently cited together are li
 
 # Research Areas: Bibliographic coupling analysis {.tabset}
 
+## Research Areas main summary
+
+This is arguably the more interesting part. Here, we identify the literature's current knowledge frontier by carrying out a bibliographic coupling analysis of the publications in our corpus. This measure  uses bibliographical information of  publications to establish a similarity relationship between them. Again, method details to be found in the tab `Technical description`. As you will see, we identify the more narrow research community of Sustainability Transitions (in which we will zoom in later), but also a set of adjacent research areas with some theoretical/methodological/application overlap.
+
 ```{r}
 M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
 ```
@@ -345,10 +347,6 @@ M_bib %<>% left_join(com_names_bib, by = "com")
 ```{r}
 mycol_bib <- M_bib %>% gg_color_select(cat = com_name, pal = "Dark2")
 ```
-
-This is arguably the more interesting part. Here, we identify the literature's current knowledge frontier by carrying out a bibliographic coupling analysis of the publications in our corpus. This measure  uses bibliographical information of  publications to establish a similarity relationship between them. Again, method details to be found in the tab `Technical description`. As you will see, we identify the more narrow research community of Sustainability Transitions (in which we will zoom in later), but also a set of adjacent research areas with some theoretical/methodological/application overlap.
-
-## Research Areas main summary
 
 ### Main Characteristics
 To identify communities in the field's knowledge frontier (labeled **research areas**) we again use the **Lovain Algorithm** (Blondel et al., 2008). We identify the following communities = research areas.
@@ -417,7 +415,7 @@ g_agg %E>%
   scale_color_brewer(palette = 'Paired') 
 ```
 
-### Technical description
+## Technical description
 In a bibliographic coupling network, the **coupling-strength** between publications is determined by the number of commonly cited references they share, assuming a common pool of references to indicate similarity in context, methods, or theory. Formally, the strength of the relationship between a publication pair $i$ and $j$ ($s_{i,j}^{bib}$) is expressed by the number of commonly cited references. 
 
 $$	s_{i,j}^{bib} = \sum_m c_{i,m} c_{j,m} $$
