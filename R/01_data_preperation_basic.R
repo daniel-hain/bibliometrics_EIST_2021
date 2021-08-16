@@ -62,8 +62,6 @@ g_bib <- mat_bib %>% igraph::graph_from_adjacency_matrix(mode = "undirected", we
   igraph::simplify() %>%
   as_tbl_graph(directed = FALSE) # %N>% left_join(M %>% select(XX, SR, PY, TC, J9), by = c("name" = "XX")) %>% mutate(id = 1:n()) 
 
-g_bib_save <- g_bib
-
 # Restrict the network
 g_bib <- g_bib_save %E>% 
   filter(weight >= cutof_edge_bib) %N>%
@@ -83,7 +81,6 @@ g_bib <- g_bib %N>%
   morph(to_split, com) %>% 
   mutate(dgr_int = centrality_degree(weights = weight)) %N>%
   unmorph()
-
 
 # Community size restriction
 g_bib <- g_bib %N>%
@@ -109,10 +106,6 @@ M_bib <- M %>% select(XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(name,
 # Save and remove
 M_bib %>% saveRDS("../temp/M_bib.RDS")
 
-# ### Restrict original M
-# M %<>%
-#   semi_join(M_bib, by = 'XX')
-
 ### Aggregated Network
 require(RNewsflow)
 g_bib_agg <- g_bib %>%
@@ -124,6 +117,7 @@ g_bib_agg <- g_bib %>%
   rename(weight = agg.weight) %>%
   select(from, to, weight)
 
+## Weight edges
 # g_bib_agg <- g_bib_agg %E>%
 #   rename(weight_count = weight) %>%
 #   mutate(weight = weight_count / (.N()$N[from] * .N()$N[to]) ) %>%
@@ -141,10 +135,7 @@ rm(mat_bib, g_bib, com_size_bib, cutof_edge_bib, cutof_node_bib, g_bib_agg)
 
 mat_cit <- M %>%
   as.data.frame() %>% 
-  biblioNetwork(analysis = "co-citation", network = "references", sep = ";", shortlabel = TRUE)
-
-# mat_cit %>% saveRDS("../temp/mat_cit.RDS")
-# mat_cit <- readRDS("../temp/mat_cit.RDS")
+  biblioNetwork(analysis = "co-citation", network = "references", sep = ";", shortlabel = FALSE)
 
 g_cit <- mat_cit %>% igraph::graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE) %>% 
   igraph::simplify() %>%
@@ -156,17 +147,17 @@ g_cit <- g_cit %E>%
   # filter(percent_rank(weight) >= cutof_edge_pct_cit) %N>%
   filter(!node_is_isolated()) %N>%
   mutate(dgr = centrality_degree(weights = weight)) %N>%
-  filter(dgr >= cutof_node_cit) #%>%
-  #filter(percent_rank(dgr) >= cutof_node_pct_cit)
+  filter(dgr >= cutof_node_cit) 
+  # %>% filter(percent_rank(dgr) >= cutof_node_pct_cit)
 
-# Weighting # NOTE: Only in Cicit network
-g_cit <- g_cit %E>%
-  mutate(weight_jac = weight / (.N()$dgr[from] + .N()$dgr[to] - weight) ) %N>%
-  mutate(dgr_jac = centrality_degree(weights = weight_jac))
+## JACCARD weighting # NOTE: Only in cit network
+#g_cit <- g_cit %E>%
+#  mutate(weight = weight / (.N()$dgr[from] + .N()$dgr[to] - weight) ) %N>%
+#  mutate(dgr = centrality_degree(weights = weight))
 
 # # Inspect
-# g_cit %N>% mutate(dgr = centrality_degree(weights = weight)) %>% as_tibble() %>% skimr::skim()
-# g_cit %E>% as_tibble() %>% skimr::skim()
+g_cit %N>% as_tibble() %>% skimr::skim()
+g_cit %E>% as_tibble() %>% skimr::skim()
 
 # Community Detection
 g_cit <- g_cit %N>%
@@ -187,8 +178,10 @@ g_cit <- g_cit %N>%
 
 # Update degree
 g_cit <- g_cit %N>%
-  mutate(dgr = centrality_degree(weights = weight),
-         dgr_jac = centrality_degree(weights = weight_jac))
+  mutate(dgr = centrality_degree(weights = weight))
+
+# Check number of coms
+g_cit %N>% as_tibble() %>% count(com)
 
 # Save the objects we need lateron
 g_cit %>% saveRDS("../temp/g_cit.RDS")
@@ -214,7 +207,8 @@ saveRDS(g_cit_agg, "../temp/g_cit_agg.RDS")
 rm(mat_cit, g_cit, g_cit_agg)
 
 #### 2 mode network 
-m_2m <- M %>% as.data.frame() %>% cocMatrix(Field = "CR", sep = ";")
+rownames(M) <- M %>% pull(XX)
+m_2m <- M %>% as.data.frame() %>% cocMatrix(Field = "CR", sep = ";", short = FALSE)
 
 g_2m <- m_2m %>% igraph::graph_from_incidence_matrix(directed = TRUE) %>% 
   igraph::simplify() 
@@ -231,11 +225,12 @@ el_2m %<>%
   inner_join(C_nw %>% select(name, com), by = c('to' = 'name')) %>%
   rename(com_cit = com)
 
+# DOES NOT WORK YET
 saveRDS(el_2m, "../temp/el_2m.RDS")
 rm(m_2m, g_2m, el_2m)
 
 ############################################################################
-# Locan citations
+# Local citations
 ############################################################################
 
 CR <- M %>% citations(field = "article", sep = ";")

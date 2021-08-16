@@ -33,7 +33,6 @@ library(ggraph)
 source("../functions/functions_basic.R")
 source("../functions/functions_summary.R")
 source("../functions/00_parameters.R")
-
 ```
 
 ```{r global_options, include=FALSE}
@@ -53,29 +52,34 @@ knitr::opts_chunk$set(echo = FALSE,
 
 ```{r}
 M <- readRDS("../../temp/M.RDS") %>% as_tibble()
-M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
-
-#M %<>% semi_join(M_bib, by = 'XX')
 ```
 
-# General Overview over the ST and surrounding fields
+# General Overview over EIST articles
 
 ## Main Indicators: Publications, Authors, Countries
 
-To start with, a general overview over the documents in the corpus
+To start with, a general overview over the documents in the corpus.
+
+First 
 
 ```{r}
 results <- biblioAnalysis(M, sep = ";")
 
 results %>% summary(k = 10, pause = FALSE)
 ```
+And a graphical visualization
 
 ```{r}
 results %>% plot(k = 10, pause = FALSE)
 ```
 
 ```{r}
-rm(results)
+prod_AU <- M %>% authorProdOverTime(k = 10, graph = TRUE)
+plot(prod_AU$graph)
+```
+
+```{r}
+rm(results, prod_AU)
 ```
 
 ## Cited references
@@ -121,16 +125,16 @@ rm(histResults)
 * Not done yet
 
 ```{r, fig.width=20, fig.height=17.5}
-# M_threefield <- readRDS("../../temp/M_threefield.RDS") 
+M_threefield <- readRDS("../../temp/M_threefield.RDS") 
 ```
 
 ```{r, fig.width=17.5, fig.height=17.5}
-# M_threefield
+M_threefield
 ```
 
 
 ```{r}
-# rm(M_threefield)
+rm(M_threefield)
 ```
 
 
@@ -268,6 +272,8 @@ C_nw %>% group_by(com) %>%
 ```
 ### Development of Knowledge Bases
 
+Some issues atm, not working
+
 ```{r}
 el_2m<- readRDS("../../temp/el_2m.RDS")
 ```
@@ -316,6 +322,11 @@ The intuition here is that references which are frequently cited together are li
 <!-- ####################################################################################### -->
 
 # Research Areas: Bibliographic coupling analysis {.tabset}
+
+```{r}
+M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
+```
+
 ```{r}
 com_names_bib <- tibble( 
   com = 1:(M_bib %>% pull(com) %>% n_distinct()),

@@ -32,10 +32,10 @@ com_size_bib <- 10
 
 # Initial Filter
 cutof_edge_cit <- 2
-cutof_node_cit <- 10
+cutof_node_cit <- 5
 
 cutof_edge_pct_cit <- 0.05
 cutof_node_pct_cit <- 0.05
 
 # community detection
-com_size_cit <- 100
+com_size_cit <- 50
