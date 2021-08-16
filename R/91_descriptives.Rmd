@@ -100,31 +100,14 @@ CR$Cited %>% as_tibble() %>% head(20) %>%
 rm(CR)
 ```
 
+
+
 ```{r}
 #M %>% gen_summary(top_n = 20, level = "PUB", what = "count", plot = TRUE) 
 ```
 
-<!-- 
-## Conceptual trajectories: Historical citation path analysis
-
-```{r}
-histResults <- readRDS("../../temp/histResults.RDS") 
-```
-
-```{r, fig.width=17.5, fig.height=17.5}
-histResults %>% histPlot(n =50, size = 10, labelsize = 7.5)
-```
-
-
-```{r}
-rm(histResults)
-```
-
----> 
 
 ### Authors, Themes & Journals
-
-* Not done yet
 
 ```{r, fig.width=20, fig.height=17.5}
 M_threefield <- readRDS("../../temp/M_threefield.RDS") 
@@ -147,6 +130,7 @@ rm(M_threefield)
 <!-- ####################################################################################### -->
 
 # Topic modelling
+
 ```{r}
 library(tidytext)
 
@@ -434,5 +418,21 @@ More recent articles have a higher pool of possible references to co-cite to, he
 <!-- ####################################################################################### -->
 
 
+<!--- 
+## Conceptual trajectories: Historical citation path analysis
 
+```{r}
+histResults <- readRDS("../../temp/histResults.RDS") 
+```
+
+```{r, fig.width=17.5, fig.height=17.5}
+histResults %>% histPlot(n =50, size = 10, labelsize = 7.5)
+```
+
+
+```{r}
+rm(histResults)
+```
+
+---> 
 
