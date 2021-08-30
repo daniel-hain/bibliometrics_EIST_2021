@@ -24,13 +24,7 @@ library(tidygraph)
 ############################################################################
 
 # Load bibliographic data
-M <- convert2df(file = 'data/EIST_scopus.csv', dbsource = "scopus", format = "csv")
-
-
-# Restrict variables
-M  %<>% select(-Molecular.Sequence.Numbers, -Chemicals.CAS, -Tradenames, -Manufacturers, -Sponsors, 
-               -Conference.name, -Conference.date, -Conference.code, -Conference.location,
-               -CODEN, -PubMed.ID, -LA, -Publication.Stage)
+M <- convert2df(file = 'data/EIST_scopus.bib', dbsource = "scopus", format = "bibtex")
 
 # Extract Meta Tags #TODO: Maybe more?
 M %<>% metaTagExtraction(Field = "AU_CO", aff.disamb = TRUE, sep = ";")
@@ -43,6 +37,16 @@ M %<>% metaTagExtraction(Field = "CR_SO", aff.disamb = TRUE, sep = ";")
 M %<>% rownames_to_column('XX') %>% 
   mutate(XX = paste(str_extract(XX, pattern = ".*\\d{4}"), str_sub(TI, 1,25)) %>% str_replace_all("[^[:alnum:]]", " ") %>% str_squish() %>% str_replace_all(" ", "_") %>% make.unique(sep='_'))  
 
+# Number of cited references
+M %<>%
+  mutate(CR_n = CR %>% str_count(';')) %>%
+  filter(CR_n > 5)
+
+# Abstract
+M %<>%
+  filter(AB != '')
+
+# Setting rownames
 rownames(M) <- M$XX
 
 # Save 
@@ -63,7 +67,7 @@ g_bib <- mat_bib %>% igraph::graph_from_adjacency_matrix(mode = "undirected", we
   as_tbl_graph(directed = FALSE) # %N>% left_join(M %>% select(XX, SR, PY, TC, J9), by = c("name" = "XX")) %>% mutate(id = 1:n()) 
 
 # Restrict the network
-g_bib <- g_bib_save %E>% 
+g_bib <- g_bib %E>% 
   filter(weight >= cutof_edge_bib) %N>%
   # filter(percent_rank(weight) >= cutof_edge_pct_bib) %N>%
   filter(!node_is_isolated()) %N>%
@@ -210,7 +214,7 @@ rm(mat_cit, g_cit, g_cit_agg)
 rownames(M) <- M %>% pull(XX)
 m_2m <- M %>% as.data.frame() %>% cocMatrix(Field = "CR", sep = ";", short = FALSE)
 
-g_2m <- m_2m %>% igraph::graph_from_incidence_matrix(directed = TRUE) %>% 
+g_2m <- m_2m %>% igraph::graph_from_incidence_matrix(directed = TRUE, mode = 'out', multiple = FALSE) %>% 
   igraph::simplify() 
 
 el_2m <- g_2m %>%
@@ -220,12 +224,17 @@ el_2m <- g_2m %>%
          to = V2)
 
 el_2m %<>%
-  inner_join(M_bib %>% select(XX, com), by = c('from' = 'XX')) %>%
+  left_join(M_bib %>% select(XX, com), by = c('from' = 'XX')) %>%
   rename(com_bib = com) %>%
-  inner_join(C_nw %>% select(name, com), by = c('to' = 'name')) %>%
+  left_join(M %>% select(XX, PY), by = c('from' = 'XX')) %>%
+  left_join(C_nw %>% select(name, com), by = c('to' = 'name')) %>%
   rename(com_cit = com)
 
-# DOES NOT WORK YET
+el_2m %>% 
+  drop_na(PY, com_cit) %>%
+  count(PY)
+
+# save
 saveRDS(el_2m, "../temp/el_2m.RDS")
 rm(m_2m, g_2m, el_2m)
 
