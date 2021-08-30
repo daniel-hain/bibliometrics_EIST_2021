@@ -369,7 +369,7 @@ M_bib %>% group_by(com_name) %>%
   left_join(M %>% select(XX, AU, PY, TI, TC)) %>%
   mutate(dgr_select = (dgr_int / max(dgr_int) * (TC / max(TC))) ) %>%
   slice_max(order_by = dgr_select, n = 10) %>% 
-  mutate(TC_year = TC / (2019 + 1 - PY),
+  mutate(TC_year = TC / (2021 + 1 - PY),
          AU = AU %>% str_trunc(25),
          TI = TI %>% str_trunc(100)) %>%
   select(AU, PY, TI, dgr_int, TC, TC_year) %>% 
