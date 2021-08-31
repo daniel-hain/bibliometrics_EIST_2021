@@ -271,19 +271,19 @@ text_tidy %<>%
 # # Replace some known shortcuts (not sure if that improves)
 # text_tidy %<>%
 #   mutate(AB = AB %>% str_replace_all(c(
-#     "multi[ -]level[ -]perspective" = "mlp", 
-#     "socio[ -]technical[ -]transition[s]?" = "sts", 
+#     "multi[ -]level[ -]perspective" = "mlp",
+#     "socio[ -]technical[ -]transition[s]?" = "sts",
 #     "technological[ -]innovation[ -]system[s]?" = "tis",
-#     "regional[ -]innovation[ -]system[s]?" = "ris", 
-#     "nationall[ -]innovation[ -]system[s]?" = "nis", 
-#     "large technological system[s]?" = "lts",    
-#     "socio[ -]technical[ -]system[s]?" = "sts", 
-#     "strategic niche management" = "strategic-niche-management", 
+#     "regional[ -]innovation[ -]system[s]?" = "ris",
+#     "nationall[ -]innovation[ -]system[s]?" = "nis",
+#     "large technological system[s]?" = "lts",
+#     "socio[ -]technical[ -]system[s]?" = "sts",
+#     "strategic niche management" = "strategic-niche-management",
 #     "innovation[ -]system[s]?" = "innovation-system",
 #     "system[s]?[ -]of[ -]innovation" = "innovation-system",
 #     "sustainable[ -]transition[s]?" = "sustainability-transition",
 #     "sustainability[ -]transition[s]?" = "sustainability-transition")) %>%
-#       str_replace_all("-", "_")) 
+#       str_replace_all("-", "_"))
 
 text_tidy %<>% 
   unnest_ngrams(term, AB, ngram_delim = ' ', n_min = 1, n = 3)

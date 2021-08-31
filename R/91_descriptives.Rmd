@@ -59,8 +59,6 @@ M <- readRDS("../../temp/M.RDS") %>% as_tibble()
 
 To start with, a general overview over the documents in the corpus.
 
-First 
-
 ```{r}
 results <- biblioAnalysis(M, sep = ";")
 
@@ -87,7 +85,7 @@ rm(results, prod_AU)
 CR <- readRDS("../../temp/CR.RDS") 
 ```
 
-Top 20 cited references:
+Top 20 cited references (by corpus documents):
 
 ```{r}
 CR$Cited %>% as_tibble() %>% head(20) %>% 
@@ -131,16 +129,16 @@ topic_names <- tibble(
   topic = 1:(text_lda_gamma %>% pull(topic) %>% n_distinct()),
   topic_name = 
     #1:(text_lda_gamma %>% pull(topic) %>% n_distinct())
-    c('1 TIS & markets',
-    '2 Transitions (General)',
-    '3 Economics',
-    '4 Institutions & actors',
-    '5 Policy',
-    '6 ???s')
+    c('1 TIS & Markets',
+      '2 ???',
+      '3 (Energy) Economics',
+      '4 ???',
+      '5 Geography & Institutions',
+      '6 ?Transitions (general)')
 )
 
-text_lda_beta %<>%left_join(topic_names, by = 'topic')
-text_lda_gamma %<>%left_join(topic_names, by = 'topic')
+text_lda_beta %<>% left_join(topic_names, by = 'topic')
+text_lda_gamma %<>% left_join(topic_names, by = 'topic')
 ```
 
 
@@ -184,7 +182,7 @@ text_lda_gamma %>%
   group_by(PY) %>% mutate(weight_PY = sum(weight)) %>% ungroup() %>%
   mutate(weight_rel = weight / weight_PY) %>%
   select(PY, topic_name, weight, weight_rel) %>%
-  filter(PY >= 1998 & PY <= 2020) %>%
+  filter(PY >= 1998 & PY <= 2021) %>%
   arrange(PY, topic_name) %>%
   plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic_name,  pal = "Dark2", label = TRUE,
                         y1_text = "Topic popularity annualy", y2_text = "Share of topic annually")
