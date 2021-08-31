@@ -9,6 +9,7 @@ output:
     toc_depth: 3
     toc_float: yes
     number_sections: yes
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -256,7 +257,7 @@ NOTE: Up to now I only report the most central members per community
 C_nw %>% group_by(com) %>% 
   select(com, name, dgr_int, dgr) %>%
   arrange(com, desc(dgr_int)) %>%
-  mutate(name = name %>% str_trunc(100)) %>%
+  mutate(name = name %>% str_trunc(150)) %>%
   slice_max(order_by = dgr_int, n = 10) %>% kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
 ```
@@ -357,7 +358,7 @@ M_bib %>% group_by(com_name) %>%
   mutate(TC_year = TC / (2021 + 1 - PY),
          AU = AU %>% str_trunc(25),
          TI = TI %>% str_trunc(125)) %>%
-  select(AU, PY, TI, dgr_int, TC, TC_year) %>% 
+  select(com_name, AU, PY, TI, dgr_int, TC, TC_year) %>% 
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
 ```
@@ -382,6 +383,7 @@ M_bib %>%
 We again see quite some dynamics....
 
 ### Connectivity between the research areas
+
 ```{r}
 g_agg <- readRDS("../../temp/g_bib_agg.RDS")
 
@@ -442,7 +444,7 @@ rm(M_threefield)
 
 
 
-## Conceptual trajectories: Historical citation path analysis
+### Conceptual trajectories: Historical citation path analysis
 
 ```{r}
 histResults <- readRDS("../../temp/histResults.RDS") 
