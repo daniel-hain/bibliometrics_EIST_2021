@@ -24,7 +24,6 @@ library(kableExtra) # For table styling
 library(tidyverse)
 library(magrittr)
 
-
 library(bibliometrix)
 library(tidygraph)
 library(ggraph)
@@ -101,25 +100,8 @@ rm(CR)
 ```
 
 
-
 ```{r}
 #M %>% gen_summary(top_n = 20, level = "PUB", what = "count", plot = TRUE) 
-```
-
-
-### Authors, Themes & Journals
-
-```{r, fig.width=20, fig.height=17.5}
-M_threefield <- readRDS("../../temp/M_threefield.RDS") 
-```
-
-```{r, fig.width=17.5, fig.height=17.5}
-M_threefield
-```
-
-
-```{r}
-rm(M_threefield)
 ```
 
 
@@ -135,30 +117,35 @@ rm(M_threefield)
 library(tidytext)
 
 text_tidy <- readRDS("../../temp/text_tidy.RDS")
-text_lda <- readRDS("../../temp/text_lda.RDS")
+text_lda <- readRDS("../../temp/text_lda.RDS") 
 ```
 
 ```{r}
-top_names <- tibble( 
-  com = 1:(C_nw %>% pull(com) %>% n_distinct()),
-  com_name = 
-    1:(C_nw %>% pull(com) %>% n_distinct())
-#    c('1 Transition studies',
-#    '2 Classic innovation studies',
-#    '3 Territorial innovation systems',
-#    '4 (National) innovation systems',
-#    '5 Sociology and practice theory',
-#    '6 Socio-ecological systems',
-#    '7 Political ecology and governance')
+text_lda_beta <- text_lda %>% tidy(matrix = "beta") 
+text_lda_gamma <- text_lda %>% tidy(matrix = "gamma")
+```
+
+
+```{r}
+topic_names <- tibble( 
+  topic = 1:(text_lda_gamma %>% pull(topic) %>% n_distinct()),
+  topic_name = 
+    #1:(text_lda_gamma %>% pull(topic) %>% n_distinct())
+    c('1 TIS & markets',
+    '2 Transitions (General)',
+    '3 Economics',
+    '4 Institutions & actors',
+    '5 Policy',
+    '6 ???s')
 )
+
+text_lda_beta %<>%left_join(topic_names, by = 'topic')
+text_lda_gamma %<>%left_join(topic_names, by = 'topic')
 ```
 
-```{r}
-C_nw %<>% left_join(com_names_cit, by = "com")
-```
 
 ```{r}
-mycol_lda <- text_lda %>% tidy(matrix = "beta") %>% gg_color_select(cat = topic, pal = "Paired")
+mycol_lda <- text_lda_beta %>% gg_color_select(cat = topic_name, pal = "Dark2")
 ```
 
 
@@ -166,14 +153,14 @@ I by now created some topic modelling. The results are now more fine-tuned, but 
 
 ## Topics by topwords
 ```{r, fig.width=17.5, fig.height=15} 
-text_lda %>% tidy(matrix = "beta") %>%
-  group_by(topic) %>%
+text_lda_beta %>%
+  group_by(topic_name) %>%
   slice_max(beta, n = 10) %>%
   ungroup() %>%
-  mutate(term = reorder_within(term, beta, topic)) %>%
-  ggplot(aes(term, beta, fill = factor(topic))) +
+  mutate(term = reorder_within(term, beta, topic_name)) %>%
+  ggplot(aes(term, beta, fill = factor(topic_name))) +
   geom_col(show.legend = FALSE) +
-  facet_wrap(~ topic, scales = "free") +
+  facet_wrap(~ topic_name, scales = "free") +
   coord_flip() +
   scale_x_reordered() +
   labs(x = "Intra-topic distribution of word",
@@ -189,17 +176,17 @@ This might still be finetuned, but initially doesnt look that bad I think. All t
 ## Topics over time
 
 ```{r, fig.width = 15, fig.height=7.5}
-text_lda %>% tidy(matrix = "gamma") %>%
+text_lda_gamma %>%
   rename(weight = gamma) %>%
   left_join(M %>% select(XX, PY), by = c('document' = 'XX')) %>%
   mutate(PY = as.numeric(PY)) %>%
-  group_by(PY, topic) %>% summarise(weight = sum(weight)) %>% ungroup() %>%
+  group_by(PY, topic_name) %>% summarise(weight = sum(weight)) %>% ungroup() %>%
   group_by(PY) %>% mutate(weight_PY = sum(weight)) %>% ungroup() %>%
   mutate(weight_rel = weight / weight_PY) %>%
-  select(PY, topic, weight, weight_rel) %>%
+  select(PY, topic_name, weight, weight_rel) %>%
   filter(PY >= 1998 & PY <= 2020) %>%
-  arrange(PY, topic) %>%
-  plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic,  pal = "Paired", label = FALSE,
+  arrange(PY, topic_name) %>%
+  plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic_name,  pal = "Dark2", label = TRUE,
                         y1_text = "Topic popularity annualy", y2_text = "Share of topic annually")
 ```
 
@@ -371,7 +358,7 @@ M_bib %>% group_by(com_name) %>%
   slice_max(order_by = dgr_select, n = 10) %>% 
   mutate(TC_year = TC / (2021 + 1 - PY),
          AU = AU %>% str_trunc(25),
-         TI = TI %>% str_trunc(100)) %>%
+         TI = TI %>% str_trunc(125)) %>%
   select(AU, PY, TI, dgr_int, TC, TC_year) %>% 
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
@@ -438,6 +425,25 @@ More recent articles have a higher pool of possible references to co-cite to, he
 
 
 <!--- 
+# Additional analysis
+
+## Authors, Themes & Journals
+
+```{r, fig.width=20, fig.height=17.5}
+M_threefield <- readRDS("../../temp/M_threefield.RDS") 
+```
+
+```{r, fig.width=17.5, fig.height=17.5}
+M_threefield
+```
+
+
+```{r}
+rm(M_threefield)
+```
+
+
+
 ## Conceptual trajectories: Historical citation path analysis
 
 ```{r}

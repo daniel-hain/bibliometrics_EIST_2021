@@ -8,7 +8,7 @@
 #          "CR", "RP", "LA", "JI", "DT", "DB", "UT", "J9", "AU_UN", "AU1_UN", "AU_UN_NR", "SR_FULL", "SR")
 
 # Initial read parameters
-TC_min <- 1 # Min number of citations
+TC_min <- 0 # Min number of citations
 n_max <- 500 # Number of articles selected
 PY_min <-1990 # Start year
 

@@ -232,11 +232,143 @@ el_2m %<>%
 
 el_2m %>% 
   drop_na(PY, com_cit) %>%
-  count(PY)
+  count(PY, wt = TC)
 
 # save
 saveRDS(el_2m, "../temp/el_2m.RDS")
 rm(m_2m, g_2m, el_2m)
+
+
+
+############################################################################
+# Topicmodel
+############################################################################
+
+library(tidytext)
+library(topicmodels)
+library(textstem)
+
+# Extract text to work with
+text_tidy <- M %>% 
+  as_tibble() %>%
+  select(XX, AB) %>%
+  rename(document = XX) 
+
+# Some initial cleaning
+text_tidy %<>% 
+  mutate(AB = AB %>% 
+           str_to_lower() %>%
+           str_replace_all("&", "-and-") %>%
+           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
+           iconv(to = "UTF-8", sub = "byte") %>%
+           str_remove_all("�.*") %>%
+           str_remove_all('[:digit:]') %>%
+           str_squish() 
+  )  %>%
+  drop_na() 
+
+
+# # Replace some known shortcuts (not sure if that improves)
+# text_tidy %<>%
+#   mutate(AB = AB %>% str_replace_all(c(
+#     "multi[ -]level[ -]perspective" = "mlp", 
+#     "socio[ -]technical[ -]transition[s]?" = "sts", 
+#     "technological[ -]innovation[ -]system[s]?" = "tis",
+#     "regional[ -]innovation[ -]system[s]?" = "ris", 
+#     "nationall[ -]innovation[ -]system[s]?" = "nis", 
+#     "large technological system[s]?" = "lts",    
+#     "socio[ -]technical[ -]system[s]?" = "sts", 
+#     "strategic niche management" = "strategic-niche-management", 
+#     "innovation[ -]system[s]?" = "innovation-system",
+#     "system[s]?[ -]of[ -]innovation" = "innovation-system",
+#     "sustainable[ -]transition[s]?" = "sustainability-transition",
+#     "sustainability[ -]transition[s]?" = "sustainability-transition")) %>%
+#       str_replace_all("-", "_")) 
+
+text_tidy %<>% 
+  unnest_ngrams(term, AB, ngram_delim = ' ', n_min = 1, n = 3)
+
+text_tidy %<>% 
+  separate(term, c("word1", "word2", "word3"), sep = " ")
+
+# Stopwords
+stop_words_own <- tibble(
+  word =c("the", "rights","reserved" , "study", "studies", "these", "this", "paper", "result", "model", "approach", "article", "author", "method", "understand", "focus", "examine", "aim", "argue", "identify",
+                   "increase", "datum", "potential", "explore", "include", "issue", "propose", "address", "apply", "require", "analyse", "relate", "finding",
+                   "analyze", "discuss", "contribute", "publish", "involve", "draw", "lead", "exist", "set", "reduce", "create", "form", "explain", "play",
+                   "affect", "regard", "associate", "establish", "follow", "conclude", "define", "strong", "attempt", "finally", "elsevier", "offer",
+                   "taylor", "francis", "copyright", "springer", "wiley", "emerald", "copyright", "b.v"),
+  lexicon = 'own') %>% 
+  bind_rows(stop_words)
+
+text_tidy %<>%
+  filter(!word1 %in% stop_words_own$word,
+         !word2 %in% stop_words_own$word,
+         !word3 %in% stop_words_own$word,
+         is.na(word1) | str_length(word1) > 2,
+         is.na(word2) | str_length(word2) > 2,
+         is.na(word3) | str_length(word3) > 2)
+
+# Lemmatizing 
+lemma_own <- tibble( # WORK IN THAT !!!!!!!!!!
+  token = c("systems", "institutional", "technological", "national", "regional", "sustainable",    "environmental", "political", "politic", "politics"),
+  lemma = c("system", "institution",   "technology",    "nation",   "region",   "sustainability", "environment", "policy", "policy", "policy"))
+    
+lemma_new <- lexicon::hash_lemmas %>% 
+  filter(token != 'data') %>%
+  anti_join(lemma_own, by = 'token') %>%
+  bind_rows(lemma_own)
+
+text_tidy %<>%
+  mutate(word1 = word1 %>% lemmatize_words(dictionary = lemma_new),
+         word2 = word2 %>% lemmatize_words(dictionary = lemma_new),
+         word3 = word3 %>% lemmatize_words(dictionary = lemma_new))
+
+text_tidy %<>%
+  unite(term, word1, word2, word3, na.rm = TRUE, sep = " ")
+
+# TFIDF weighting
+text_tidy %<>%
+  count(document, term) %>%
+  bind_tf_idf(term, document, n)
+
+text_tidy %>% saveRDS("../temp/text_tidy.RDS")
+
+rm(stop_words_own, lemma_own, lemma_new)
+
+# TTM
+text_dtm <- text_tidy %>%
+  cast_dtm(document, term, n) %>% tm::removeSparseTerms(sparse = .99)
+
+# # Finding nummer of topics
+# library("ldatuning")
+# 
+# find_topics <- text_dtm %>% 
+#   FindTopicsNumber(
+#     topics = seq(from = 2, to = 15, by = 1),
+#     metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+#     method = "Gibbs",
+#     control = list(seed = 77),
+#     mc.cores = 4L,
+#     verbose = TRUE
+# )
+# 
+# find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
+
+# LDA
+text_lda <- text_dtm %>% LDA(k = 6, method= "Gibbs", control = list(seed = 1337))
+text_lda %>% saveRDS("../temp/text_lda.RDS")
+
+### LDA Viz
+library(LDAvis)
+json_lda <- topicmodels_json_ldavis(fitted = text_lda, 
+                                    doc_dtm = text_dtm, 
+                                    method = "TSNE")
+json_lda %>% serVis()
+json_lda %>% serVis(out.dir = 'output/LDAviz')
+
+# clean up
+rm(text_tidy, text_dtm, text_lda)
 
 ############################################################################
 # Local citations
@@ -272,137 +404,16 @@ rm(histResults)
 ############################################################################
 # Other stuff
 ############################################################################
-M_threefield <- M %>% as.data.frame() %>% threeFieldsPlot(fields = c("AU", "DE", "CR_SO"), n = c(20, 20, 10))
-M_threefield
+# M_threefield <- M %>% as.data.frame() %>% threeFieldsPlot(fields = c("AU", "DE", "CR_SO"), n = c(20, 20, 10))
+# M_threefield
 
-M_threefield %>% saveRDS("../temp/M_threefield.RDS")
-rm(M_threefield)
+# M_threefield %>% saveRDS("../temp/M_threefield.RDS")
+# rm(M_threefield)
 
 # M %>% authorProdOverTime(k = 10, graph = TRUE)
 # M %>% rpys(sep = ";", graph = T)
 # M %>% thematicMap()
 # M_them_evo <- M %>% thematicEvolution(years = c(2000, 2019))
-
-############################################################################
-# Topicmodel
-############################################################################
-
-library(tidytext)
-library(topicmodels)
-library(textstem)
-
-# Extract text to work with
-text_tidy <- M %>% 
-  as_tibble() %>%
-  select(XX, AB) %>%
-  rename(document = XX) 
-
-# Some initial cleaning
-text_tidy %<>% 
-  mutate(AB = AB %>% 
-           str_to_lower() %>%
-           str_replace_all("&", "-and-") %>%
-           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
-           iconv(to = "UTF-8", sub = "byte") %>%
-           str_remove_all("�.*") %>%
-           str_remove_all('[:digit:]') %>%
-           str_squish() 
-  )  %>%
-  drop_na() 
-
-# Unnesting
-#text_tidy %<>% 
-#  unnest_tokens(term, AB) 
-
-text_tidy %<>% 
-  unnest_ngrams(term, AB, n_min = 1, n = 3)
-
-# filtering
-#text_tidy %<>%
-#  filter(str_length(term) > 2)
-
-text_tidy %<>% 
-  separate(term, c("word1", "word2", "word3"), sep = " ")
-
-# Stopwords
-stop_words_own <- tibble(
-  word =c("rights","reserved" , "study", "studies", "this", "paper", "result", "model", "approach", "article", "author", "method", "understand", "focus", "examine", "aim", "argue", "identify",
-                   "increase", "datum", "potential", "explore", "include", "issue", "propose", "address", "apply", "require", "analyse", "relate", "finding",
-                   "analyze", "discuss", "contribute", "publish", "involve", "draw", "lead", "exist", "set", "reduce", "create", "form", "explain", "play",
-                   "affect", "regard", "associate", "establish", "follow", "conclude", "define", "strong", "attempt", "finally", "elsevier", "offer",
-                   "taylor", "francis", "copyright", "springer", "wiley", "emerald", "copyright", "b.v"),
-  lexicon = 'own') %>% 
-  bind_rows(stop_words)
-
-text_tidy %<>%
-  filter(!word1 %in% stop_words_own$word,
-         !word2 %in% stop_words_own$word,
-         !word3 %in% stop_words_own$word,
-         is.na(word1) | str_length(word1) > 2,
-         is.na(word2) | str_length(word2) > 2,
-         is.na(word3) | str_length(word3) > 2)
-
-# Lemmatizing 
-lemma_own <- tibble( # WORK IN THAT !!!!!!!!!!
-  token = c("institutional", "technological", "national", "regional", "sustainable",    "environmental", "political"),
-  lemma = c("institution",   "technology",    "nation",   "region",   "sustainability", "environment",   "policy"))
-    
-lemma_new <- lexicon::hash_lemmas %>% 
-  filter(token != 'data') %>%
-  anti_join(lemma_own, by = 'token') %>%
-  bind_rows(lemma_own)
-
-text_tidy %<>%
-  mutate(word1 = word1 %>% lemmatize_words(dictionary = lemma_new),
-         word2 = word2 %>% lemmatize_words(dictionary = lemma_new),
-         word3 = word3 %>% lemmatize_words(dictionary = lemma_new))
-
-text_tidy %<>%
-  unite(term, word1, word2, word3, na.rm = TRUE, sep = " ")
-
-# TFIDF weighting
-text_tidy %<>%
-  count(document, term) %>%
-  bind_tf_idf(term, document, n)
-
-text_tidy %>% saveRDS("../temp/text_tidy.RDS")
-
-rm(stop_words_own, lemma_own, lemma_new)
-
-# TTM
-text_dtm <- text_tidy %>%
-  cast_dtm(document, term, n) 
-# %>% tm::removeSparseTerms(sparse = .99)
-
-# Finding nummer of topics
-library("ldatuning")
-
-find_topics <- text_dtm %>% 
-  FindTopicsNumber(
-    topics = seq(from = 2, to = 15, by = 1),
-    metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
-    method = "Gibbs",
-    control = list(seed = 77),
-    mc.cores = 4L,
-    verbose = TRUE
-)
-
-find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
-
-# LDA
-text_lda <- text_dtm %>% LDA(k = 6, method= "Gibbs", control = list(seed = 1337))
-text_lda %>% saveRDS("../temp/text_lda.RDS")
-
-### LDA Viz
-library(LDAvis)
-json_lda <- topicmodels_json_ldavis(fitted = text_lda, 
-                                    doc_dtm = text_dtm, 
-                                    method = "TSNE")
-json_lda %>% serVis()
-json_lda %>% serVis(out.dir = 'output/LDAviz')
-
-# clean up
-rm(text_tidy, text_dtm, text_lda)
 
 
 ############################################################################
