@@ -356,7 +356,7 @@ text_dtm <- text_tidy %>%
 # find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
 
 # LDA
-text_lda <- text_dtm %>% LDA(k = 6, method= "Gibbs", control = list(seed = 1337))
+text_lda <- text_dtm %>% LDA(k = 10, method= "Gibbs", control = list(seed = 1337))
 text_lda %>% saveRDS("../temp/text_lda.RDS")
 
 ### LDA Viz
@@ -365,7 +365,7 @@ json_lda <- topicmodels_json_ldavis(fitted = text_lda,
                                     doc_dtm = text_dtm, 
                                     method = "TSNE")
 json_lda %>% serVis()
-json_lda %>% serVis(out.dir = 'output/LDAviz')
+json_lda %>% serVis(out.dir = 'output/LDAviz10')
 
 # clean up
 rm(text_tidy, text_dtm, text_lda)
