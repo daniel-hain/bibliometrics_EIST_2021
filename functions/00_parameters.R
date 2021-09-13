@@ -24,7 +24,7 @@ cutof_edge_pct_bib <- 0.00
 cutof_node_pct_bib <- 0.00
 
 # community detection
-com_size_bib <- 10
+com_size_bib <- 20
 
 ############################################################################
 #  Network Co-Citation

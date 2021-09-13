@@ -52,7 +52,7 @@ rownames(M) <- M$XX
 # Save 
 #€M %<>% column_to_rownames('XX')
 M %>% saveRDS("../temp/M.RDS")
-
+# M <- read_rds("../temp/M.RDS")
 ############################################################################
 # Networks Bibliographic
 ############################################################################
@@ -230,9 +230,8 @@ el_2m %<>%
   left_join(C_nw %>% select(name, com), by = c('to' = 'name')) %>%
   rename(com_cit = com)
 
-el_2m %>% 
-  drop_na(PY, com_cit) %>%
-  count(PY, wt = TC)
+el_2m %<>% 
+  drop_na(PY, com_bib, com_cit)
 
 # save
 saveRDS(el_2m, "../temp/el_2m.RDS")
@@ -332,8 +331,6 @@ text_tidy %<>%
   count(document, term) %>%
   bind_tf_idf(term, document, n)
 
-text_tidy %>% saveRDS("../temp/text_tidy.RDS")
-
 rm(stop_words_own, lemma_own, lemma_new)
 
 # TTM
@@ -356,8 +353,8 @@ text_dtm <- text_tidy %>%
 # find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
 
 # LDA
-text_lda <- text_dtm %>% LDA(k = 10, method= "Gibbs", control = list(seed = 1337))
-text_lda %>% saveRDS("../temp/text_lda.RDS")
+text_lda <- text_dtm %>% LDA(k = 6, method= "Gibbs", control = list(seed = 1337))
+
 
 ### LDA Viz
 library(LDAvis)
@@ -365,7 +362,11 @@ json_lda <- topicmodels_json_ldavis(fitted = text_lda,
                                     doc_dtm = text_dtm, 
                                     method = "TSNE")
 json_lda %>% serVis()
-json_lda %>% serVis(out.dir = 'output/LDAviz10')
+
+# Save
+text_tidy %>% saveRDS("../temp/text_tidy.RDS")
+text_lda %>% saveRDS("../temp/text_lda.RDS")
+json_lda %>% serVis(out.dir = 'output/LDAviz')
 
 # clean up
 rm(text_tidy, text_dtm, text_lda)
