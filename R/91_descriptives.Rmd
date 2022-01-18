@@ -367,6 +367,17 @@ com_top_bib <- text_lda_gamma %>%
 ```
 
 ```{r}
+el_2m %>%
+  count(com_bib, com_cit) %>%
+  left_join(com_names_bib, by = c("com_bib" = "com")) %>%
+  left_join(com_names_cit, by = c("com_cit" = "com"))
+```
+
+
+
+
+
+```{r}
 com_top_bib %>% 
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
@@ -444,7 +455,18 @@ Since our corpus contains publications which differ strongly in terms of the num
 
 $$	S_{i,j}^{jac-bib} =\frac{C(i \cap j)}{C(i \cup j)} = \frac{s_{i,j}^{bib}}{c_i + c_j - s_{i,j}^{bib}} $$
 
+
+
 More recent articles have a higher pool of possible references to co-cite to, hence they are more likely to be coupled. Consequently, bibliographic coupling represents a forward looking measure, and the method of choice to identify the current knowledge frontier at the point of analysis.
+
+
+
+```{r}
+#M %>% 
+#  arrange(PY, XX) %>%
+#  select(PY, XX, AU) %>%
+# write_csv2('../../temp/temp_IDs.csv')
+```
 
 
 <!-- ####################################################################################### -->
