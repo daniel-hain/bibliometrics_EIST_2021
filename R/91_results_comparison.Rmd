@@ -24,10 +24,33 @@ library(tidyverse)
 library(magrittr)
 ```
 
-# Load data
+# Main  Load data
+
+```{r}
+
+results_expert <- read_csv2('../data/tm_paper_concept_clean.csv')
+```
+
+
+
+
 
 ```{r}
 M <- readRDS("../../temp/M.RDS") %>% as_tibble()
-
-labels <- read_csv2('../data/tm_paper_concept_clean.csv')
 ```
+
+
+
+
+
+
+
+
+```{r}
+results_bert  <- read_csv('../output/result_prediction_bert.csv')
+```
+
+```{r}
+results_bert
+```
+

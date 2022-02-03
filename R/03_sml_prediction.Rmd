@@ -94,3 +94,42 @@ data_text %>% write_csv('../data/data_text.csv')
 labels%>% write_csv('../data/data_labels.csv')
 ```
 
+
+
+
+# Data ST prediction (delete later)
+
+
+```{r}
+full_data <- read_rds('../../input/st_full_corpus.rds') %>% as_tibble()
+red_data <- read_rds('../../input/st_red_corpus.rds') %>% as_tibble()
+
+full_data %<>% semi_join(red_data, by = 'DI')
+```
+
+```{r}
+full_data %<>% select(XX, AB) %>%
+  rename(text = AB) %>%
+  mutate(text = text %>% 
+           str_to_lower() %>%
+           str_replace_all("&", "-and-") %>%
+           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
+           iconv(to = "UTF-8", sub = "byte") %>%
+           str_remove_all("�.*") %>%
+           str_remove_all('[:digit:]') %>%
+           str_squish()) %>% 
+  drop_na()
+```
+
+```{r}
+full_data %>% write_csv('../data/data_pred_text.csv')
+```
+
+
+
+
+
+
+
+
+
