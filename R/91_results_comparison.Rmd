@@ -1,0 +1,33 @@
+---
+title: "Transitions Bibliometrics 2020 - Exploring predictions"
+author: "Daniel S. Hain"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+### Generic preamble
+Sys.setenv(LANG = "en")
+options(scipen = 5)
+set.seed(1337)
+
+### Load packages  
+library(kableExtra) # For table styling
+library(tidyverse)
+library(magrittr)
+```
+
+# Load data
+
+```{r}
+M <- readRDS("../../temp/M.RDS") %>% as_tibble()
+
+labels <- read_csv2('../data/tm_paper_concept_clean.csv')
+```
