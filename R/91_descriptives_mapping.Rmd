@@ -1,5 +1,5 @@
 ---
-title: "Luxembourg Research Evaluation 2022: Field Mapping of Knowledge Structure"
+title: "EIST Mapping 2022: Field Mapping of Knowledge Structure"
 author: "Daniel S. Hain"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
