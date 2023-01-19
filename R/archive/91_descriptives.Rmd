@@ -1,0 +1,515 @@
+---
+title: "Transitions Bibliometrics 2020"
+author: "Daniel S. Hain"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+### Generic preamble
+Sys.setenv(LANG = "en")
+options(scipen = 5)
+set.seed(1337)
+
+### Load packages  
+library(knitr) # For display of the markdown
+library(kableExtra) # For table styling
+
+library(tidyverse)
+library(magrittr)
+
+library(bibliometrix)
+library(tidygraph)
+library(ggraph)
+
+# own functions
+source("../functions/functions_basic.R")
+source("../functions/functions_summary.R")
+source("../functions/00_parameters.R")
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      warning = FALSE, 
+                      message = FALSE)
+```
+
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+# Initial Corpus generation 
+
+```{r}
+M <- readRDS("../../temp/M.RDS") %>% as_tibble()
+```
+
+# General Overview over EIST articles
+
+## Main Indicators: Publications, Authors, Countries
+
+To start with, a general overview over the documents in the corpus.
+
+```{r}
+results <- biblioAnalysis(M, sep = ";")
+
+results %>% summary(k = 10, pause = FALSE)
+```
+And a graphical visualization
+
+```{r}
+results %>% plot(k = 10, pause = FALSE)
+```
+
+```{r}
+prod_AU <- M %>% authorProdOverTime(k = 10, graph = TRUE)
+plot(prod_AU$graph)
+```
+
+```{r}
+rm(results, prod_AU)
+```
+
+## Cited references
+
+```{r}
+CR <- readRDS("../../temp/CR.RDS") 
+```
+
+Top 20 cited references (by corpus documents):
+
+```{r}
+CR$Cited %>% as_tibble() %>% head(20) %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
+```
+
+```{r}
+rm(CR)
+```
+
+
+```{r}
+#M %>% gen_summary(top_n = 20, level = "PUB", what = "count", plot = TRUE) 
+```
+
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+# Topic modelling
+
+```{r}
+library(tidytext)
+
+text_tidy <- readRDS("../../temp/text_tidy.RDS")
+text_lda <- readRDS("../../temp/text_lda.RDS") 
+```
+
+```{r}
+text_lda_beta <- text_lda %>% tidy(matrix = "beta") 
+text_lda_gamma <- text_lda %>% tidy(matrix = "gamma")
+```
+
+
+```{r}
+topic_names <- tibble( 
+  topic = 1:(text_lda_gamma %>% pull(topic) %>% n_distinct()),
+  topic_name = 
+    #1:(text_lda_gamma %>% pull(topic) %>% n_distinct())
+    c('1 TIS & Markets',
+      '2 ? Undefined ',
+      '3 (Energy) Economics',
+      '4 ? undefined',
+      '5 Geography & Institutions',
+      '6 ? Transitions (general)')
+)
+
+text_lda_beta %<>% left_join(topic_names, by = 'topic')
+text_lda_gamma %<>% left_join(topic_names, by = 'topic')
+```
+
+
+```{r}
+mycol_lda <- text_lda_beta %>% gg_color_select(cat = topic_name, pal = "Dark2")
+```
+
+
+I by now created some topic modelling. The results are now more fine-tuned, but there is still room for some improvement. We ran a LDA on the titles + abstracts of our corpus, aiming at identifying 6 topics (different evaluation methods point towards this number)
+
+## Topics by topwords
+```{r, fig.width=17.5, fig.height=15} 
+text_lda_beta %>%
+  group_by(topic_name) %>%
+  slice_max(beta, n = 10) %>%
+  ungroup() %>%
+  mutate(term = reorder_within(term, beta, topic_name)) %>%
+  ggplot(aes(term, beta, fill = factor(topic_name))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic_name, scales = "free") +
+  coord_flip() +
+  scale_x_reordered() +
+  labs(x = "Intra-topic distribution of word",
+       y = "Words in topic") + 
+  scale_fill_manual(name = "Legend", values = mycol_lda) 
+
+#plot_ly <- plot %>% plotly::ggplotly()
+#htmlwidgets::saveWidget(plotly::as_widget(plot_ly), '../output\vis_plotly_topic_terms.html', selfcontained = TRUE)
+```
+
+This might still be finetuned, but initially doesnt look that bad I think. All the topics for me seem to be somewhat identifiable. We should maybe start naming them to make their interpretation later easier. 
+
+## Topics over time
+
+```{r, fig.width = 15, fig.height=7.5}
+text_lda_gamma %>%
+  rename(weight = gamma) %>%
+  left_join(M %>% select(XX, PY), by = c('document' = 'XX')) %>%
+  mutate(PY = as.numeric(PY)) %>%
+  group_by(PY, topic_name) %>% summarise(weight = sum(weight)) %>% ungroup() %>%
+  group_by(PY) %>% mutate(weight_PY = sum(weight)) %>% ungroup() %>%
+  mutate(weight_rel = weight / weight_PY) %>%
+  select(PY, topic_name, weight, weight_rel) %>%
+  filter(PY >= 1998 & PY <= 2021) %>%
+  arrange(PY, topic_name) %>%
+  plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic_name,  pal = "Dark2", label = TRUE,
+                        y1_text = "Topic popularity annualy", y2_text = "Share of topic annually")
+```
+
+## LDAViz
+Here you find a nice way of exploring topics via the `LDAVIz` methodology of visulizing the result of an LDA. It dispolays all topics in a 2 dimensional TSNE (similar to PCA, but optimized for graphical illustration in 2d), and also gives a nice visual representation over the topics top-word distribution and overall frequencies of this words in the corpus. The $\lambda$ parameter regulates the importance-ordering of the topwords. High $\lambda$ order words by the highest propability to appear in the topic to the lowest (independent of the overall word popularity in the corpus), whle low $\lambda$ emphasize words which are very specific to the topic, and rarely appear in others.
+
+Play a bit around. Since it would be here a bit condensed, here in fullscreen for a better overview. I also provide besides the 6 topics version I presented above a version with 8 or 10 topics to inspect which fits best.
+
+* [6 Topics](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz6/) 
+* [8 Topics](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz8/) 
+* [10 Topics](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz10/) 
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+```{r}
+rm(text_tidy, text_lda)
+```
+
+
+# Knowledge Bases: Co-Citation network analysis {.tabset}
+
+```{r}
+C_nw <- readRDS("../../temp/C_nw.RDS")
+```
+
+```{r}
+com_names_cit <- tibble( 
+  com = 1:(C_nw %>% pull(com) %>% n_distinct()),
+  com_name = 
+    # 1:(C_nw %>% pull(com) %>% n_distinct())
+    c('1 MLP',
+    '2 TIS',
+    '3 Geography',
+    '4 Intermediaries',
+    '5 Modelling',
+    '6 ? Undefined (diffusion)',
+    '7 Sociology1',
+    '8 Management',
+    '9 Sharing Economy')
+)
+```
+
+```{r}
+C_nw %<>% left_join(com_names_cit, by = "com")
+```
+
+```{r}
+mycol_cit <- C_nw %>% gg_color_select(cat = com_name, pal = "Set1")
+```
+
+
+**Note:** This analysis refers the co-citation analysis, where the cited references and not the original publications are the unit of analysis. See tab `Technical description`for additional explanations
+
+## Knowledge Bases summary
+
+### Main Indicators
+In order to partition networks into components or clusters, we deploy a **community detection** technique based on the **Lovain Algorithm** (Blondel et al., 2008). The Lovain Algorithm is a heuristic method that attempts to optimize the modularity of communities within a network by maximizing within- and minimizing between-community connectivity. We identify the following communities = knowledge bases.
+
+```{r}
+C_nw %>%
+  group_by(com_name) %>%
+  summarise(n = n(), density_int = ((sum(dgr_int) / (n() * (n() - 1))) * 100) %>% round(3)) %>%
+  relocate(com_name, everything())
+```
+
+It is not the main focus of this exercise, but still informative to see which historical knowledge the fields draws from. 
+
+NOTE: Up to now I only report the most central members per community
+
+```{r}
+C_nw %>% group_by(com) %>% 
+  select(com, name, dgr_int, dgr) %>%
+  arrange(com, desc(dgr_int)) %>%
+  mutate(name = name %>% str_trunc(150)) %>%
+  slice_max(order_by = dgr_int, n = 10, with_ties = FALSE) %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
+```
+### Development of Knowledge Bases
+
+```{r}
+el_2m <- readRDS("../../temp/el_2m.RDS") %>%
+  drop_na()
+```
+
+
+```{r}
+cit_com_year <- el_2m %>%
+  count(com_cit, PY, name = 'TC') %>%
+  group_by(PY) %>%
+  mutate(TC_rel = TC / sum(TC)) %>%
+  ungroup() %>%
+  arrange(PY, com_cit) %>%
+  left_join(com_names_cit , by = c('com_cit' = 'com')) %>% 
+  complete(com_name, PY, fill = list(TC = 0, TC_rel = 0))
+
+```
+
+
+```{r, fig.width = 15, fig.height=7.5}
+cit_com_year %>%
+  plot_summary_timeline(y1 = TC, y2 = TC_rel, t = PY, by = com_name, pal = "Set1", label = TRUE,
+                        y1_text = "Number citations recieved annually",  y2_text = "Share of citations recieved annually")
+```
+
+## Technical description
+In a co-cittion network, the strength of the relationship between a reference pair $m$ and $n$ ($s_{m,n}^{coc}$) is expressed by the number of publications $C$ which are jointly citing reference $m$ and $n$. 
+
+$$s_{m,n}^{coc} = \sum_i c_{i,m} c_{i,n}$$
+
+The intuition here is that references which are frequently cited together are likely to share commonalities in theory, topic, methodology, or context. It can be interpreted as a measure of similarity as evaluated by other researchers that decide to jointly cite both references. Because the publication process is time-consuming, co-citation is a backward-looking measure, which is appropriate to map the relationship between core literature of a field.
+
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+# Research Areas: Bibliographic coupling analysis {.tabset}
+
+## Research Areas main summary
+
+This is arguably the more interesting part. Here, we identify the literature's current knowledge frontier by carrying out a bibliographic coupling analysis of the publications in our corpus. This measure  uses bibliographical information of  publications to establish a similarity relationship between them. Again, method details to be found in the tab `Technical description`. As you will see, we identify the more narrow research community of Sustainability Transitions (in which we will zoom in later), but also a set of adjacent research areas with some theoretical/methodological/application overlap.
+
+```{r}
+M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
+```
+
+```{r}
+com_names_bib <- tibble( 
+  com = 1:(M_bib %>% pull(com) %>% n_distinct()),
+  com_name = 
+    #1:(M_bib %>% pull(com) %>% n_distinct())
+    c('1 MLP / TIS', 
+      '2 MLP',
+      '3 Geography',
+      '4 Policy'
+  )
+)
+```
+
+```{r}
+M_bib %<>% left_join(com_names_bib, by = "com")
+```
+
+```{r}
+mycol_bib <- M_bib %>% gg_color_select(cat = com_name, pal = "Dark2")
+```
+
+### Main Characteristics
+To identify communities in the field's knowledge frontier (labeled **research areas**) we again use the **Lovain Algorithm** (Blondel et al., 2008). We identify the following communities = research areas.
+
+```{r}
+com_summary_bib <- M_bib %>%
+  group_by(com, com_name) %>%
+  summarise(n = n(), density_int = ((sum(dgr_int) / (n() * (n() - 1))) * 100) %>% round(3)) %>%
+  select(com, com_name, everything())
+```
+
+```{r}
+com_summary_bib
+```
+
+```{r}
+com_top_bib <- text_lda_gamma %>%
+  left_join(M_bib %>% select(XX, com), by = c('document' = 'XX')) %>%
+  count(com, topic_name, wt = gamma, name = 'weight') %>%
+  left_join(com_names_bib, by = "com") %>%
+  mutate(weight = weight %>% round(0)) %>%
+  group_by(com) %>%
+  slice_max(weight, n = 3, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(com, com_name, topic_name) 
+```
+
+```{r}
+el_2m %>%
+  count(com_bib, com_cit) %>%
+  left_join(com_names_bib, by = c("com_bib" = "com")) %>%
+  left_join(com_names_cit, by = c("com_cit" = "com"))
+```
+
+
+
+
+
+```{r}
+com_top_bib %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
+```
+
+
+### Categorization
+
+I up to now gain only provide the 10 most central articles, which can be used to classify them
+
+```{r}
+M_bib %>% group_by(com_name) %>% 
+  left_join(M %>% select(XX, AU, PY, TI, TC), by = 'XX') %>%
+  mutate(dgr_select = (dgr_int / max(dgr_int) * (TC / max(TC))) ) %>%
+  slice_max(order_by = dgr_select, n = 10, with_ties = FALSE) %>% 
+  mutate(TC_year = TC / (2021 + 1 - PY),
+         AU = AU %>% str_trunc(25),
+         TI = TI %>% str_trunc(125)) %>%
+  select(com_name, AU, PY, TI, dgr_int, TC, TC_year) %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
+```
+
+### 
+
+
+### Development
+
+```{r, fig.width = 15, fig.height=7.5}
+M_bib %>%
+  left_join(M %>% select(XX, PY), by = 'XX') %>%
+  mutate(PY = PY %>% as.numeric()) %>%
+  group_by(com_name, PY) %>% summarise(n = n()) %>% ungroup() %>%
+  group_by(PY) %>% mutate(n_PY = sum(n)) %>% ungroup() %>%
+  mutate(n_rel = n / n_PY) %>%
+  select(com_name, PY, n, n_rel) %>%
+  arrange(com_name, PY) %>% 
+  filter(PY >= 1995) %>%
+  complete(com_name, PY, fill = list(n = 0, n_rel = 0)) %>%
+  plot_summary_timeline(y1 = n, y2 = n_rel, t = PY, by = com_name, label = TRUE,
+                        y1_text = "Number publications annually", y2_text = "Share of publications annually")
+```
+
+We again see quite some dynamics....
+
+### Connectivity between the research areas
+
+```{r}
+g_agg <- readRDS("../../temp/g_bib_agg.RDS")
+
+g_agg <- g_agg %N>%
+  arrange(com) # %>%
+#   mutate(name = names_ra %>% pull(com_ra_name),
+#          color = cols_ra)
+```
+
+```{r, fig.height= 7.5, fig.width=7.5}
+g_agg %E>% 
+  filter(weight > 0 & from != to) %>%
+  filter(weight >= quantile(weight, 0.25) )  %>%
+  ggraph(layout = "circle") + 
+  geom_edge_fan(strenght = 0.075, aes(width = weight), alpha = 0.2)  + 
+  geom_node_point(aes(size = N, color = factor(com)))  + 
+  geom_node_text(aes(label = com), repel = TRUE) +
+  theme_graph(base_family = "Arial") +
+  scale_color_brewer(palette = 'Paired') 
+```
+
+## Technical description
+In a bibliographic coupling network, the **coupling-strength** between publications is determined by the number of commonly cited references they share, assuming a common pool of references to indicate similarity in context, methods, or theory. Formally, the strength of the relationship between a publication pair $i$ and $j$ ($s_{i,j}^{bib}$) is expressed by the number of commonly cited references. 
+
+$$	s_{i,j}^{bib} = \sum_m c_{i,m} c_{j,m} $$
+
+Since our corpus contains publications which differ strongly in terms of the number of cited references, we normalize the coupling strength by the Jaccard similarity coefficient. Here, we weight the intercept of two publications' bibliography (shared refeences) by their union (number of all references cited by either $i$ or $j$). It is bounded between zero and one, where one indicates the two publications to have an identical bibliography, and zero that they do not share any cited reference. Thereby, we prevent publications from having high coupling strength due to a large bibliography (e.g., literature surveys).
+
+$$	S_{i,j}^{jac-bib} =\frac{C(i \cap j)}{C(i \cup j)} = \frac{s_{i,j}^{bib}}{c_i + c_j - s_{i,j}^{bib}} $$
+
+
+
+More recent articles have a higher pool of possible references to co-cite to, hence they are more likely to be coupled. Consequently, bibliographic coupling represents a forward looking measure, and the method of choice to identify the current knowledge frontier at the point of analysis.
+
+
+
+```{r}
+#M %>% 
+#  arrange(PY, XX) %>%
+#  select(PY, XX, AU) %>%
+# write_csv2('../../temp/temp_IDs.csv')
+```
+
+
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+<!-- ############################# NEXT PART ############################################### -->
+<!-- ####################################################################################### -->
+<!-- ####################################################################################### -->
+
+
+<!--- 
+# Additional analysis
+
+## Authors, Themes & Journals
+
+```{r, fig.width=20, fig.height=17.5}
+M_threefield <- readRDS("../../temp/M_threefield.RDS") 
+```
+
+```{r, fig.width=17.5, fig.height=17.5}
+M_threefield
+```
+
+
+```{r}
+rm(M_threefield)
+```
+
+
+
+### Conceptual trajectories: Historical citation path analysis
+
+```{r}
+histResults <- readRDS("../../temp/histResults.RDS") 
+```
+
+```{r, fig.width=17.5, fig.height=17.5}
+histResults %>% histPlot(n =50, size = 10, labelsize = 7.5)
+```
+
+
+```{r}
+rm(histResults)
+```
+
+---> 
+

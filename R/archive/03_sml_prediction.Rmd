@@ -1,0 +1,135 @@
+---
+title: "Transitions Bibliometrics 2020 - Exploring Embeddings"
+author: "Daniel S. Hain"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+### Generic preamble
+Sys.setenv(LANG = "en")
+options(scipen = 5)
+set.seed(1337)
+
+### Load packages  
+library(kableExtra) # For table styling
+library(tidyverse)
+library(magrittr)
+```
+
+# Load data
+
+```{r}
+M <- readRDS("../../temp/M.RDS") %>% as_tibble()
+
+labels <- read_csv2('../data/tm_paper_concept_clean.csv')
+```
+
+```{r}
+colnames(labels) <- colnames(labels) %>% str_to_lower() %>% str_remove_all('[\\,\\-\\.]')
+```
+
+```{r}
+labels %<>% 
+  select(-id_orig) %>%
+  rename(XX = id_new) %>%
+  drop_na(XX)
+```
+
+# Explore and reduce labels
+
+```{r}
+labels_count <- labels %>%
+  pivot_longer(-XX) %>%
+  count(name, wt = value, sort = TRUE) 
+```
+
+```{r, fig.height=5}
+labels_count %>%
+  mutate(name = fct_reorder(name, n)) %>%
+  ggplot(aes(x = name, y = n)) +
+  geom_col() + 
+  coord_flip()
+```
+
+```{r}
+# reduce labels
+
+# By number of hits
+# labels_count %<>% filter(n >= 50)
+
+# By rank
+labels_count %<>% slice(1:20)
+```
+
+```{r}
+labels <- labels[, colnames(labels) %in% c('XX', labels_count %>% pull(name))]
+```
+
+```{r}
+data_text <- M %>% rename(text = AB) %>% 
+  select(XX, text) %>%
+  mutate(text = text %>% 
+           str_to_lower() %>%
+           str_replace_all("&", "-and-") %>%
+           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
+           iconv(to = "UTF-8", sub = "byte") %>%
+           str_remove_all("�.*") %>%
+           str_remove_all('[:digit:]') %>%
+           str_squish()) %>% 
+  drop_na()  
+```
+
+
+```{r}
+# Save on github
+data_text %>% write_csv('../data/data_text.csv')
+labels%>% write_csv('../data/data_labels.csv')
+```
+
+
+
+
+# Data ST prediction (delete later)
+
+
+```{r}
+full_data <- read_rds('../../input/st_full_corpus.rds') %>% as_tibble()
+red_data <- read_rds('../../input/st_red_corpus.rds') %>% as_tibble()
+
+full_data %<>% semi_join(red_data, by = 'DI')
+```
+
+```{r}
+full_data %<>% select(XX, AB) %>%
+  rename(text = AB) %>%
+  mutate(text = text %>% 
+           str_to_lower() %>%
+           str_replace_all("&", "-and-") %>%
+           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
+           iconv(to = "UTF-8", sub = "byte") %>%
+           str_remove_all("�.*") %>%
+           str_remove_all('[:digit:]') %>%
+           str_squish()) %>% 
+  drop_na()
+```
+
+```{r}
+full_data %>% write_csv('../data/data_pred_text.csv')
+```
+
+
+
+
+
+
+
+
+

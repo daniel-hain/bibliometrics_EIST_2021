@@ -1,0 +1,134 @@
+---
+title: "Transitions Bibliometrics 2020 - Exploring Embeddings"
+author: "Daniel S. Hain"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+### Generic preamble
+Sys.setenv(LANG = "en")
+options(scipen = 5)
+set.seed(1337)
+
+### Load packages  
+library(kableExtra) # For table styling
+library(tidyverse)
+library(magrittr)
+```
+
+# Load data
+
+```{r}
+# Save on github
+data_text <- read_csv('../data/data_text.csv')
+labels <- read_csv('../data/data_labels.csv')
+```
+
+# Embeddings
+
+```{r}
+library(text)
+```
+
+```{r}
+# Transform the text data to BERT word embeddings
+embeddings <- data_text %>% 
+  pull(text) %>% 
+  textEmbed(model = 'allenai/scibert_scivocab_uncased') # 'allenai/scibert_scivocab_uncased'
+```
+
+```{r}
+embeddings %>% saveRDS('../data/embeddings.rds')
+```
+
+```{r}
+# embeddings <- readRDS('../data/embeddings.rds')
+```
+
+
+```{r}
+embeddings$text %>% head()
+```
+
+```{r}
+library(uwot)
+```
+
+```{r}
+res_umap <- embeddings$text %>%
+  umap(metric = "cosine") 
+```
+
+```{r}
+res_umap %>%
+  as_tibble() %>%
+  bind_cols(data_text %>% select(XX)) %>%
+  inner_join(labels, by = 'XX') %>%
+  ggplot(aes(x = V1, y = V2, col = tis %>% factor())) + 
+  geom_point(shape = 21, alpha = 0.5) 
+```
+
+# Prediction
+
+```{r}
+library(keras)
+```
+
+
+```{r}
+x_train <- embeddings$text %>% as.matrix()
+
+y_train <- data_text %>% 
+  select(XX) %>% 
+  left_join(labels, by = 'XX') %>%
+  select(-XX) %>%
+  mutate(across(everything(), ~replace_na(., 0)))  %>%
+  as.matrix()
+```
+
+```{r}
+
+model1 <- keras_model_sequential() %>% 
+  # architecture
+  layer_dense(units = 1024, activation = "relu", input_shape = ncol(x_train)) %>% 
+  layer_dropout(rate = 0.1) %>%
+  layer_dense(units = 128, activation = "relu") %>% 
+  layer_dropout(rate = 0.1) %>%
+  layer_dense(units = 64, activation = "relu") %>% 
+  layer_dense(units = ncol(y_train), activation = 'sigmoid') 
+```
+
+
+```{r}
+model1 %>%
+  compile(optimizer = optimizer_adam(), 
+          loss = loss_binary_crossentropy(), 
+          metrics = list('accuracy'),
+          )
+```
+
+```{r}
+# set.seed(1337)
+hist1 <- model1 %>% fit(x = x_train, 
+                        y = y_train, 
+                        validation_split = 0.20, 
+                        epochs = 100,
+                        callbacks = list(callback_tensorboard("logs/run_a"),
+                                         callback_early_stopping(patience = 15))
+                        )
+```
+
+```{r}
+tensorboard("logs/run_a")
+```
+
+
+

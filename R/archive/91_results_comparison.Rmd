@@ -1,0 +1,196 @@
+---
+title: "Transitions Bibliometrics 2020 - Exploring predictions"
+author: "Daniel S. Hain"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+### Generic preamble
+Sys.setenv(LANG = "en")
+options(scipen = 5)
+set.seed(1337)
+
+### Load packages  
+library(kableExtra) # For table styling
+library(tidyverse)
+library(magrittr)
+
+### Nlp & NW
+library(tidytext)
+library(tidygraph)
+library(ggraph)
+library(tidymodels)
+```
+
+# Similarity comparison
+
+```{r}
+M <- read_rds("../../temp/M.RDS")
+```
+
+
+```{r}
+results_exp <- read_csv('../data/data_labels.csv')
+```
+## Expert Network
+
+```{r}
+library(widyr)
+library(tidygraph)
+library(ggraph)
+```
+
+
+```{r}
+el_exp <- results_exp %>% 
+  arrange(XX) %>%
+  pivot_longer(cols = -XX, names_to = 'field') %>%
+  pairwise_similarity(item = XX, 
+                      feature = field, 
+                      value = value,
+                      diag = FALSE,
+                      upper = FALSE) %>%
+  mutate(similarity = similarity %>% round(3)) %>%
+  rename(sim_exp = similarity)
+```
+
+
+## Topic Network
+
+```{r}
+lda_gamma <- read_rds("../../temp/text_lda.RDS") %>% tidy(matrix = 'gamma') 
+```
+
+```{r}
+el_lda <- lda_gamma %>% 
+  arrange(document) %>%
+  pairwise_similarity(item = document, 
+                      feature = topic, 
+                      value = gamma,
+                      diag = FALSE,
+                      upper = FALSE) %>%
+  mutate(similarity = similarity %>% round(3)) %>%
+  rename(sim_lda = similarity)
+```
+
+## Biblio Network
+
+```{r}
+# g_bib <- read_rds("../../temp/g_bib.RDS")
+g_bib <- M %>% bibliometrix::biblioNetwork(analysis = "coupling", network = "references", sep = ";", shortlabel =  FALSE)%>% 
+  igraph::graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE) %>% 
+  igraph::simplify() %>%
+  as_tbl_graph(directed = FALSE) 
+```
+
+```{r}
+el_bib <- g_bib %E>%
+  as_tibble() %>%
+  left_join(g_bib %N>% as_tibble() %>% mutate(id = 1:n()) %>% select(id, name), by = c('from' = 'id')) %>%
+  left_join(g_bib %N>% as_tibble() %>% mutate(id = 1:n()) %>% select(id, name), by = c('to' = 'id')) %>%
+  rename(item1 = name.x,
+         item2 = name.y,
+         similarity = weight) %>%
+  arrange(item1, item2) %>%
+  select(item1, item2, similarity) %>%
+  mutate(similarity = similarity / max(similarity)) %>%
+  mutate(similarity = similarity %>% round(3)) %>%
+  rename(sim_bib = similarity)
+```
+
+
+## (SciBERT Embedding) Network
+
+```{r}
+embeddings <- read_csv('../data/data_text.csv') %>% 
+  select(XX) %>%
+  bind_cols(read_rds('../data/embeddings.rds')$x %>% as_tibble()) %>%
+  arrange(XX) 
+```
+
+
+`
+```{r}
+el_bert <- embeddings %>%
+  pivot_longer(cols = -XX, names_to = 'field') %>%
+  pairwise_similarity(item = XX, 
+                      feature = field, 
+                      value = value,
+                      diag = FALSE,
+                      upper = FALSE) %>%
+  mutate(similarity = similarity %>% round(3)) %>%
+  rename(sim_bert = similarity)
+
+```
+
+## ML predicted (SciBert)
+
+```{r}
+pred_bert <- read_csv('../data/pred_bert_test.csv')[,-1] %>% mutate(dataset = 'test') %>% relocate(XX, dataset) %>%
+  bind_rows(read_csv('../data/pred_bert_train.csv')[,-1] %>% mutate(dataset = 'train') %>% relocate(XX, dataset) )
+```
+
+
+## Network Joint
+
+```{r}
+el_all <- el_exp %>%
+  left_join(el_lda, by = c('item1', 'item2')) %>%
+  left_join(el_bib, by = c('item1', 'item2')) %>%
+  left_join(el_bert, by = c('item1', 'item2')) %>%
+  mutate(across(everything(), .fns = ~replace_na(.,0))) %>%
+  mutate(rank_exp = sim_exp %>% percent_rank(),
+         rank_lda = sim_lda %>% percent_rank(),
+         rank_bib = sim_bib %>% percent_rank(),
+         rank_bert = sim_bert %>% percent_rank(),
+         diff_rank_lda = abs(rank_exp - rank_lda), 
+         diff_rank_bib = abs(rank_exp - rank_bib), 
+         diff_rank_bert = abs(rank_exp - rank_bert)) %>%
+  group_by(item1) %>%
+  mutate(int_rank_exp = sim_exp %>% percent_rank(),
+         int_rank_lda = sim_lda %>% percent_rank(),
+         int_rank_bib = sim_bib %>% percent_rank(),
+         int_rank_bert = sim_bert %>% percent_rank(),
+         int_diff_rank_lda = abs(int_rank_exp - int_rank_lda), 
+         int_diff_rank_bib = abs(int_rank_exp - int_rank_bib), 
+         int_diff_rank_bert = abs(int_rank_exp - int_rank_bert)) %>%
+  ungroup()
+```
+
+```{r}
+el_all %>% select(starts_with('int_rank')) %>% corrr::correlate()
+```
+
+```{r}
+res_eval <- el_all %>%
+  group_by(item1) %>%
+  summarise(diff_rank_lda = mean(diff_rank_lda),
+            diff_rank_bib = mean(diff_rank_bib),
+            diff_rank_bert = mean(diff_rank_bert),
+            int_diff_rank_lda = mean(int_diff_rank_lda),
+            int_diff_rank_bib = mean(int_diff_rank_bib),
+            int_diff_rank_bert = mean(int_diff_rank_bert)
+            )
+```
+
+```{r}
+res_eval %>% select(starts_with('int_diff')) %>% corrr::correlate()
+```
+
+```{r}
+sim_x <- el_all %>% filter(sim_exp == 1)
+```
+
+# TODO and ideas
+
+* Prepare interactive overview on micro similarity
+* Check consistency / homogeneity of clusters following different methods
+* CHeck field development on macro level with difeferent methods
