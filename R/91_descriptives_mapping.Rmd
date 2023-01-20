@@ -142,28 +142,7 @@ M <- readRDS(paste0('../../temp/M_', str_to_lower(var_inst), '_', str_to_lower(v
 ```{r}
 com_labels <- read_csv2('../data/community_labeling.csv')  %>% filter(institute == var_inst, department == var_dept) %>% arrange(institute, department, type, com) %>% mutate(label = ifelse(is.na(label), paste0(type, ' ', com, ': unlabeled'), paste0(type, ' ', com, ': ', label)))
 ```
-<!---
-# Seed Articles
 
-**Note:** The seed articles deemed representative for the active areas of research in the institution, and include authors affiliated with the institution. The departments research field is identified by selecting the 2000 most similar publications to the selected seed articles. See `Technical description`for additional explanations.
-
-```{r, include=FALSE}
-seed <-convert2df(file = paste0('../../data/seeds/scopus_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '_seed_select.csv'), dbsource = "scopus", format = "csv") %>%
-  as_tibble() %>%
-  mutate(seed = TRUE) 
-```
-
-```{r}
-seed %>%
-  select(AU, PY, TI, JI) %>%
-  mutate(AU = AU %>% str_trunc(30),
-         TI = TI %>% str_trunc(100),
-         JI = JI %>% str_trunc(30)) %>%
-  kable() %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 10)
-```
-
---->
 
 # General Overview over the research field
 
@@ -667,3 +646,25 @@ g_inst %N>%
 sessionInfo()
 ```
 
+<!---
+# Seed Articles
+
+**Note:** The seed articles deemed representative for the active areas of research in the institution, and include authors affiliated with the institution. The departments research field is identified by selecting the 2000 most similar publications to the selected seed articles. See `Technical description`for additional explanations.
+
+```{r, include=FALSE}
+seed <-convert2df(file = paste0('../../data/seeds/scopus_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '_seed_select.csv'), dbsource = "scopus", format = "csv") %>%
+  as_tibble() %>%
+  mutate(seed = TRUE) 
+```
+
+```{r}
+seed %>%
+  select(AU, PY, TI, JI) %>%
+  mutate(AU = AU %>% str_trunc(30),
+         TI = TI %>% str_trunc(100),
+         JI = JI %>% str_trunc(30)) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 10)
+```
+
+--->
