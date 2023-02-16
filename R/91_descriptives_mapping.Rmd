@@ -235,7 +235,7 @@ text_lda_beta %>%
 ```{r, fig.width = 15, fig.height=7.5}
 text_lda_gamma %>%
   rename(weight = gamma) %>%
-  left_join(M %>% select(XX, PY), by = c('document' = 'XX')) %>%
+  left_join(M %>% select(UT, PY), by = c('document' = 'UT')) %>%
   mutate(PY = as.numeric(PY)) %>%
   group_by(PY, label) %>% summarise(weight = sum(weight)) %>% ungroup() %>%
   group_by(PY) %>% mutate(weight_PY = sum(weight)) %>% ungroup() %>%
@@ -253,8 +253,8 @@ text_lda_gamma %>%
 ```{r, fig.width = 15, fig.height=7.5}
 text_lda_gamma %>%
   rename(weight = gamma) %>%
-  inner_join(M %>% select(XX, PY, TC_cohort_rank) %>%
-              filter(int_dept = TRUE), by = c('document' = 'XX')) %>%
+  inner_join(M %>% select(UT, PY, TC_cohort_rank) %>%
+              filter(int_dept = TRUE), by = c('document' = 'UT')) %>%
   # mutate(impact = weight* TC_cohort_rank) %>%
   mutate(impact = TC_cohort_rank >= 0.9) %>%
   group_by(PY) %>%
@@ -405,7 +405,7 @@ ra_stats <- M_bib %>%
 
 ```{r}
 ra_sum <- M_bib %>% group_by(label) %>% 
-  left_join(M %>% select(XX, AU, PY, TI, TC), by = 'XX') %>%
+  left_join(M %>% select(UT, AU, PY, TI, TC), by = 'UT') %>%
   mutate(dgr_select = (dgr_int / max(dgr_int) * (TC / max(TC))) ) %>%
   slice_max(order_by = dgr_select, n = 10, with_ties = FALSE) %>% 
   mutate(TC_year = (TC / (2021 + 1 - PY)) %>% round(2),

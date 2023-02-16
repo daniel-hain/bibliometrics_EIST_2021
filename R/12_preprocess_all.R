@@ -338,7 +338,7 @@ M %>%
            str_remove_all('(&elsevier;|&springer;|&rights reserved)/.*') %>%
            str_squish())  %>%
   select(UT, PY, text) %>%
-  write_csv2('data/data_text.csv')
+  write_csv('data/data_text.csv')
 
 
 print('Starting: Topic Modelling')
@@ -415,19 +415,19 @@ text_tidy %<>%
 text_dtm <- text_tidy %>%
   cast_dtm(document, term, n) %>% tm::removeSparseTerms(sparse = .99)
 
-# Finding nummer of topics
-find_topics <- text_dtm %>%
-  FindTopicsNumber(
-    topics = seq(from = 5, to = 12, by = 1),
-    metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
-    method = "Gibbs",
-    control = list(seed = 1337),
-    mc.cores = 3L,
-    verbose = TRUE
-  )
-
-find_topics %>% FindTopicsNumber_plot()
-n_topic = 8
+# # Finding nummer of topics
+# find_topics <- text_dtm %>%
+#   FindTopicsNumber(
+#     topics = seq(from = 5, to = 12, by = 1),
+#     metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
+#     method = "Gibbs",
+#     control = list(seed = 1337),
+#     mc.cores = 3L,
+#     verbose = TRUE
+#   )
+# 
+# find_topics %>% FindTopicsNumber_plot()
+n_topic = 7
 
 text_lda <- text_dtm %>% LDA(k = n_topic, method= "Gibbs", control = list(seed = 1337))
 
@@ -455,8 +455,8 @@ el_sim_topic <- text_lda_gamma %>%
 
 # join with year = uni
 el_sim_topic %<>%
-  inner_join(M %>% select(XX, PY), by = c('item1' = 'XX')) %>%
-  inner_join(M %>% select(XX, PY), by = c('item2' = 'XX')) %>%
+  inner_join(M %>% select(UT, PY), by = c('item1' = 'UT')) %>%
+  inner_join(M %>% select(UT, PY), by = c('item2' = 'UT')) %>%
   rename(PY_from = PY.x, PY_to = PY.y)
 
 # decide for similarity past or future
@@ -476,7 +476,7 @@ pub_sim <- el_sim_topic %>%
   drop_na()
 
 uni_sim <- pub_sim %>%
-  inner_join(pub_inst %>% select(XX, AU_UN), by = c('item1' = 'XX')) %>%
+  inner_join(pub_inst %>% select(UT, AU_UN), by = c('item1' = 'UT')) %>%
   group_by(AU_UN) %>%
   summarise(sim_past = mean(sim_past),
             sim_present = mean(sim_present),
