@@ -333,11 +333,13 @@ M %>%
   select(UT, PY, TI, AB) %>%
   mutate(text = paste(TI, AB, sep = '. ')  %>% 
            str_to_lower() %>% 
+           str_remove_all("©.*") %>%          
            str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
-           str_remove_all('(&elsevier;|&springer;|&rights reserved)/') %>%
+           str_remove_all('(&elsevier;|&springer;|&rights reserved)/.*') %>%
            str_squish())  %>%
   select(UT, PY, text) %>%
-  write_csv('data/data_text.csv')
+  write_csv2('data/data_text.csv')
+
 
 print('Starting: Topic Modelling')
 
@@ -413,18 +415,18 @@ text_tidy %<>%
 text_dtm <- text_tidy %>%
   cast_dtm(document, term, n) %>% tm::removeSparseTerms(sparse = .99)
 
-# # Finding nummer of topics
-# find_topics <- text_dtm %>%
-#   FindTopicsNumber(
-#     topics = seq(from = 5, to = 12, by = 1),
-#     metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
-#     method = "Gibbs",
-#     control = list(seed = 1337),
-#     mc.cores = 3L,
-#     verbose = TRUE
-#   )
-# 
-# find_topics %>% FindTopicsNumber_plot() 
+# Finding nummer of topics
+find_topics <- text_dtm %>%
+  FindTopicsNumber(
+    topics = seq(from = 5, to = 12, by = 1),
+    metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
+    method = "Gibbs",
+    control = list(seed = 1337),
+    mc.cores = 3L,
+    verbose = TRUE
+  )
+
+find_topics %>% FindTopicsNumber_plot()
 n_topic = 8
 
 text_lda <- text_dtm %>% LDA(k = n_topic, method= "Gibbs", control = list(seed = 1337))
