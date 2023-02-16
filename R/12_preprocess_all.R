@@ -47,6 +47,10 @@ M <- convert2df(file = files, dbsource = "scopus", format = "csv") %>%
   # Delete duplicates 
   distinct(UT, .keep_all = TRUE) 
 
+# Correct new scopus naming
+M %<>%
+  rename(TI = TIs)
+
 # Filter 
 M %<>% 
   # Filter number references
@@ -66,8 +70,8 @@ rownames(M) <- M$XX
 # Save whole compilation
 M %>% saveRDS(paste0('../temp/M_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 
-# M <- read_rds(paste0('../temp/M_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 
+# M <- read_rds(paste0('../temp/M_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 M %>% biblioAnalysis(sep = ";") %>% saveRDS(paste0('../temp/M_res_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 
 ###########################################################################################
@@ -83,7 +87,7 @@ mat_bib %>% saveRDS(paste0('../temp/mat_bib__', str_to_lower(var_inst), '_', str
 g_bib <- mat_bib %>% igraph::graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE) %>% 
   igraph::simplify() %>%
   as_tbl_graph(directed = FALSE) %N>% 
-  left_join(M %>% select(XX, PY, CR_n, TC_year), by = c("name" = "XX"))
+  left_join(M %>% select(XX, UT, PY, CR_n, TC_year), by = c("name" = "XX"))
 
 ## Restrict the network
 g_bib <- g_bib %E>% 
@@ -134,12 +138,13 @@ g_bib <- g_bib %N>%
   mutate(dgr = centrality_degree(weights = weight),
          dgr_jac = centrality_degree(weights = weight_jac))
 
+
 # Save the objects we need lateron
 g_bib %>% saveRDS(paste0('../temp/g_bib_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 
 ## Merge with main data
-M_bib <- M %>% select(XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(name, dgr, dgr_jac, com, dgr_int), by = c('XX' = 'name')) %>%
-  distinct(XX, .keep_all = TRUE) 
+M_bib <- M %>% select(UT, XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(UT, dgr, dgr_jac, com, dgr_int), by = 'UT') %>%
+  distinct(UT, .keep_all = TRUE) 
 
 M_bib %>% saveRDS(paste0('../temp/M_bib_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 
@@ -207,7 +212,7 @@ el_inst %>% saveRDS(paste0('../temp/el_inst_', str_to_lower(var_inst), '_', str_
 print('Starting: Co-Citation Network')
 
 mat_cit <- M %>%
-  semi_join(M_bib, by = 'XX') %>%
+  semi_join(M_bib, by = 'UT') %>%
   as.data.frame() %>% 
   biblioNetwork(analysis = "co-citation", network = "references", sep = ";", shortlabel = FALSE)
 
@@ -290,7 +295,7 @@ rm(mat_cit, g_cit, g_cit_agg)
 
 print('Starting: 2 Mode Network')
 
-rownames(M) <- M %>% pull(XX)
+rownames(M) <- M %>% pull(UT)
 
 m_2m <- M %>% 
   semi_join(M_bib) %>%
@@ -306,9 +311,9 @@ el_2m <- g_2m %>%
          to = V2)
 
 el_2m %<>%
-  left_join(M_bib %>% select(XX, com), by = c('from' = 'XX')) %>%
+  left_join(M_bib %>% select(UT, com), by = c('from' = 'UT')) %>%
   rename(com_bib = com) %>%
-  left_join(M %>% select(XX, PY), by = c('from' = 'XX')) %>%
+  left_join(M %>% select(UT, PY), by = c('from' = 'UT')) %>%
   left_join(C_nw %>% select(name, com), by = c('to' = 'name')) %>%
   rename(com_cit = com) %>% 
   drop_na(PY, com_bib, com_cit)
@@ -322,14 +327,28 @@ rm(m_2m, g_2m, el_2m, C_nw)
 ########################### Topicmodel
 ########################################################################################### 
 
+# Extract all for externbal BERTopic Modelling
+M %>% 
+  as_tibble() %>%
+  select(UT, PY, TI, AB) %>%
+  mutate(text = paste(TI, AB, sep = '. ')  %>% 
+           str_to_lower() %>% 
+           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
+           str_remove_all('(&elsevier;|&springer;|&rights reserved)/') %>%
+           str_squish())  %>%
+  select(UT, PY, text) %>%
+  write_csv('data/data_text.csv')
+
 print('Starting: Topic Modelling')
 
 # Extract text to work with
 text_tidy <- M %>% 
   as_tibble() %>%
-  select(XX, AB) %>%
-  rename(document = XX,
+  select(UT, AB) %>%
+  rename(document = UT,
          text = AB) 
+
+
 
 # Some initial cleaning
 text_tidy %<>% 
@@ -394,22 +413,18 @@ text_tidy %<>%
 text_dtm <- text_tidy %>%
   cast_dtm(document, term, n) %>% tm::removeSparseTerms(sparse = .99)
 
-# Finding nummer of topics
-find_topics <- text_dtm %>%
-  FindTopicsNumber(
-    topics = seq(from = 5, to = 12, by = 1),
-    metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
-    method = "Gibbs",
-    control = list(seed = 1337),
-    mc.cores = 3L,
-    verbose = TRUE
-  )
-
-find_topics %>% FindTopicsNumber_plot() 
-
-### Result
-
-# LDA
+# # Finding nummer of topics
+# find_topics <- text_dtm %>%
+#   FindTopicsNumber(
+#     topics = seq(from = 5, to = 12, by = 1),
+#     metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
+#     method = "Gibbs",
+#     control = list(seed = 1337),
+#     mc.cores = 3L,
+#     verbose = TRUE
+#   )
+# 
+# find_topics %>% FindTopicsNumber_plot() 
 n_topic = 8
 
 text_lda <- text_dtm %>% LDA(k = n_topic, method= "Gibbs", control = list(seed = 1337))
@@ -419,13 +434,12 @@ library(LDAvis)
 json_lda <- topicmodels_json_ldavis(fitted = text_lda, 
                                     doc_dtm = text_dtm, 
                                     method = "TSNE")
-json_lda %>% serVis()
+#json_lda %>% serVis()
 
 # Save
 text_tidy %>% saveRDS(paste0('../temp/text_tidy_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 text_lda %>% saveRDS(paste0('../temp/text_lda_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds'))
 json_lda %>% serVis(out.dir = paste0('output/topic_modelling/LDAviz_', str_to_lower(var_inst), '_', str_to_lower(var_dept)))
-servr::daemon_stop(4)
 
 ###########################################################################################
 ########################### Similarity to past & future
