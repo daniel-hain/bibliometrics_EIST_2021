@@ -404,8 +404,9 @@ ra_stats <- M_bib %>%
 ```
 
 ```{r}
-ra_sum <- M_bib %>% group_by(label) %>% 
+ra_sum <- M_bib %>% 
   left_join(M %>% select(UT, AU, PY, TI, TC), by = 'UT') %>%
+  group_by(label) %>% 
   mutate(dgr_select = (dgr_int / max(dgr_int) * (TC / max(TC))) ) %>%
   slice_max(order_by = dgr_select, n = 10, with_ties = FALSE) %>% 
   mutate(TC_year = (TC / (2021 + 1 - PY)) %>% round(2),
@@ -498,7 +499,7 @@ el_2m_kb <- el_2m %>%
   select(-weight)
 
 el_2m_topic <- text_lda_gamma %>% select(-topic, -col) %>%
-  left_join(M_bib %>% select(XX, com) %>% drop_na(com), by = c('document' = 'XX')) %>%
+  left_join(M_bib %>% select(UT, com) %>% drop_na(com), by = c('document' = 'UT')) %>%
   inner_join(com_names_bib %>% select(com, label, col), by = c('com' = 'com')) %>%
   rename(from = label.y,
          to = label.x,
