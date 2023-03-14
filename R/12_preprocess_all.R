@@ -47,10 +47,6 @@ M <- convert2df(file = files, dbsource = "scopus", format = "csv") %>%
   # Delete duplicates 
   distinct(UT, .keep_all = TRUE) 
 
-# Correct new scopus naming
-M %<>%
-  rename(TI = TIs)
-
 # Filter 
 M %<>% 
   # Filter number references
@@ -418,8 +414,8 @@ text_dtm <- text_tidy %>%
 # # Finding nummer of topics
 # find_topics <- text_dtm %>%
 #   FindTopicsNumber(
-#     topics = seq(from = 5, to = 12, by = 1),
-#     metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
+#     topics = seq(from = 5, to = 15, by = 1),
+#     metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014", "Griffiths2004"), # NOTE: Leaving out for now matric "Griffiths2004", due to problems installing the "gmp" package
 #     method = "Gibbs",
 #     control = list(seed = 1337),
 #     mc.cores = 3L,
@@ -447,20 +443,31 @@ json_lda %>% serVis(out.dir = paste0('output/topic_modelling/LDAviz_', str_to_lo
 ########################### Similarity to past & future
 ###########################################################################################
 
-text_lda_gamma <- text_lda %>% 
-  tidy(matrix = "gamma")
 
-el_sim_topic <- text_lda_gamma %>%
-  widyr::pairwise_similarity(document, topic, gamma, diag = FALSE, upper = TRUE)
+# # old version with topic
+# text_lda_gamma <- text_lda %>% 
+#   tidy(matrix = "gamma")
+# 
+# el_sim_topic <- text_lda_gamma %>%
+#   widyr::pairwise_similarity(document, topic, gamma, diag = FALSE, upper = TRUE)
+
+
+embeddings <- read_csv('data/data_text.csv') %>%
+  select(UT) %>%
+  bind_cols(read_csv('data/embeddings_specter.csv')) %>%
+  pivot_longer(-UT, names_to = 'dim')
+
+el_sim <- embeddings %>%
+  widyr::pairwise_similarity(UT, dim, value, diag = FALSE, upper = TRUE)
 
 # join with year = uni
-el_sim_topic %<>%
+el_sim %<>%
   inner_join(M %>% select(UT, PY), by = c('item1' = 'UT')) %>%
   inner_join(M %>% select(UT, PY), by = c('item2' = 'UT')) %>%
   rename(PY_from = PY.x, PY_to = PY.y)
 
 # decide for similarity past or future
-el_sim_topic %<>%
+el_sim %<>%
   mutate(delta = PY_to - PY_from) %>%
   mutate(sim_type = case_when(
     delta == 0 ~ "present",
@@ -469,7 +476,7 @@ el_sim_topic %<>%
   )
 
 # aggregate on document level
-pub_sim <- el_sim_topic %>%
+pub_sim <- el_sim %>%
   group_by(item1, sim_type) %>%
   summarise(sim = mean(similarity)) %>%
   pivot_wider(names_from = sim_type, names_prefix = 'sim_', values_from = sim) %>%

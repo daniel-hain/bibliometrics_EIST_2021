@@ -5,7 +5,7 @@
 
 # Initial read parameters
 TC_year_min <- 1 # Min number of citations
-PY_min <- 2010 # Start year
+PY_min <- 2000 # Start year
 PY_max <- 2050 # End year
 
 # Select variables to keep

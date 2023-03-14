@@ -168,14 +168,12 @@ prod_AU <- M %>% authorProdOverTime(k = 10, graph = TRUE)
 rm(results, prod_AU)
 ```
 
-## Connection between the research field's Top Authors-Keywords-Journals
 
-```{r, include=FALSE}
-M_threefield <- readRDS(paste0('../../temp/threefield_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds')) 
-```
 
 ```{r, fig.width=17.5, fig.height=17.5}
-M_threefield
+# # Authors, keywords, citations
+#M_threefield <- readRDS(paste0('../../temp/threefield_', str_to_lower(var_inst), '_', str_to_lower(var_dept), '.rds')) 
+#M_threefield
 ```
 
 # Topic modelling 
@@ -596,8 +594,8 @@ uni_sim %>%
        y = 'Similarity to future',
        title = paste('Field Lead-Lag Analysis:', var_inst, var_dept, sep = ' '),
        subtitle = paste('Timeframe:', PY_min, '-', PY_max , sep = ' '),
-       caption = 'x and y axis')
-# + lims(x = c(0.625, 0.725), y = c(0.625, 0.725))
+       caption = 'x and y axis') + 
+  lims(x = c(0.8, 1), y = c(0.8, 1))
 ```
 
 <!-- ####################################################################################### -->
@@ -622,18 +620,25 @@ g_inst <- el_inst %>% as_tbl_graph(directed = FALSE) %E>%
 ## Collaboration network 
 
 ```{r, fig.height= 10, fig.width=15}
+# get biggest component
+components <- igraph::clusters(g_inst, mode="weak")
+biggest_cluster_id <- which.max(components$csize)
+vert_ids <- V(g_inst)[components$membership == biggest_cluster_id]
+igraph::induced_subgraph(g_inst, vert_ids)
+
 g_inst %N>% 
   mutate(cent = centrality_degree(weights = weight)) %>%
   filter(name == paste(var_inst, var_dept)  | rank(-cent) <= 100 ) %>%
   ggraph(layout = "fr") + 
   geom_edge_link(aes(width = weight,
                      #color = .N()$name[from] == paste(var_inst, var_dept) | .N()$name[from] == paste(var_inst, var_dept),
-                     filter = (weight >= weight  %>% quantile(0.25)))
+                     #filter = (weight >= weight  %>% quantile(0.01))
+                     )
                  , alpha = 0.25)  + 
   geom_node_point(aes(size = cent), col = 'steelblue1')  + 
   geom_node_text(aes(label = name, 
                      size = cent,
-                     filter = (cent >= cent  %>% quantile(0.8))), repel = TRUE) +
+                     filter = (cent >= cent  %>% quantile(0.25))), repel = TRUE) +
   #theme_graph(base_family = "Arial") +
   theme(legend.position = 'bottom') +
   scale_edge_width_continuous(range = c(0.5, 5))  +
