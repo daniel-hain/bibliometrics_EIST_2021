@@ -67,6 +67,7 @@ library(widyr)
 library(bibliometrix)
 library(tidygraph)
 library(ggraph)
+library(igraph)
 
 # NLP
 library(tidytext)
@@ -469,6 +470,55 @@ g_agg %E>%
                   caption = 'Nodes = Identified Research Areas; Edges: Bibliographic coupling strenght (Jaccard weighted)')
 ```
 
+## GPT-4 summary: 
+
+```{r}
+docs_top <- M_bib %>% 
+  left_join(M %>% select(UT,TI, AB, TC), by = 'UT') %>%
+  group_by(com) %>% 
+  mutate(dgr_select = (dgr_int / max(dgr_int) * (TC / max(TC))) ) %>%
+  slice_max(order_by = dgr_select, n = n_doc, with_ties = FALSE) %>% 
+  ungroup()  %>%
+  mutate(text = paste0(' - ', TI, '. ', AB) %>% 
+           str_to_lower() %>% 
+           str_remove_all("©.*") %>%          
+           str_remove_all("/(&trade;|&reg;|&copy;|&#8482;|&#174;|&#169;)/.*") %>%
+           str_remove_all('(&elsevier;|&springer;|&rights reserved)/.*') %>%
+           str_squish()) %>%
+  select(com, text)
+
+promt_intro = "I want you to act as a professor in social science. I want you to identify the reearch topic of following documents, which are titles plus abstacts of scientific journal article publications. They are representative articles for the topic to be identified. The journal is called  'Environmental Innovation and Societal Transitions'. The journal offers a platform for reporting studies of innovations and socio-economic transitions to enhance an environmentally sustainable economy and thus solve structural resource scarcity and environmental problems, notably related to fossil energy use and climate change. This involves attention for technological, organizational, economic, institutional and political innovations as well as economy-wide and sector changes, such as in the areas of energy, transport, agriculture and water management. The journal aims to tackle the most difficult questions, dealing with social, economic, behavioral-psychological and political barriers and opportunities as well as their complex interaction. The journal is multidisciplinary in spirit and methodologically open, and invites contributions from a broad range of disciplines within the social, environmental and innovation sciences. Specific research areas covered include: Theoretical analysis, formal modeling, empirical studies, policy discussion and a critical survey of relevant literature. Practical cases may address transitions in specific sectors, cities or regions. Articles on historical transitions not specifically related to environment and sustainability are welcome if they include a section with unique lessons for sustainability transitions. A non-exhaustive list of keywords and themes is as follows: behavior in line with bounded rationality, development theories, diffusion of innovations, environmental regulation, formal modeling, geography of innovations, historical transitions, increasing returns to scale and path dependence, innovation policy, institutional barriers, international cooperation and coordination, learning-by-doing, learning curves, lock-in, new governance, niche markets, optimal technological diversity, regime analysis, social and political power, strategic niche management, rebound effect, recombinant innovation, sector structure, social learning, transition experiments, technological regimes, transition pathways/mechanisms, vested interests, visions of the future."
+
+promt_doc_intro = "Now I provide you the 10 articles. Every article starts with an '-', and ends with a linebreak:"
+
+promt_final = "That was the last document. Your task is now to summarize the topic by a short label of 2-7 words, plus a short description of 3-5 sentences. It should consider the article content against the background of the journal they are published in. It should be brief, focussed, clear, and avoid redundancies. This summary should highlight the commonality of the documents. It should indicate the main theoretical theme, research framework applied, context, potential contributions and implications. It should also indicate if the research in this topic is more quantitative or qualitative, on a macro or micro level, and aimed at theoretical, policy, or industry implications."
+```
+
+```{r}
+top_n = 5
+n_doc = 10
+
+promt_doc = paste(docs_top %>% filter(com == top_n) %>% pull(text), collapse = ' \n ')
+promt_all <- paste(promt_intro, promt_doc_intro, promt_doc, promt_final, sep = ' \n \n ')
+cat(promt_all)
+```
+
+### 1: Sustainability Transitions and Innovations
+This topic explores the dynamics of sustainability transitions and innovations within socio-technical systems, focusing on various aspects such as lock-in mechanisms, politics, niche construction, and business model perspectives. The articles adopt theoretical frameworks like the multi-level perspective (MLP) and analyze case studies across sectors such as energy, transport, and agriculture. The research is mostly qualitative, with an emphasis on understanding the complex interactions between actors, institutions, and technologies, and their implications for policy and industry.
+
+### 2: Sustainability Transitions and Politics
+
+This topic explores the interplay between sustainability transitions and politics in the context of socio-technical systems, policy processes, and governance. The articles encompass a range of theoretical frameworks, methodologies, and case studies, reflecting the multidisciplinary nature of the journal. Research in this topic is primarily qualitative, focusing on macro-level analysis with an emphasis on theoretical and policy implications. Contributions address various aspects of sustainability transitions, such as the role of the state, justice, incumbents, discourses, and innovation spaces, offering insights for understanding and supporting large-scale societal changes towards a sustainable future.
+
+### 3: Sustainability Transitions and Innovation Systems
+The common theme across these articles is the exploration of sustainability transitions through the lens of technological innovation systems (TIS) and their various interactions with contextual factors such as geography, politics, and institutions. These studies apply both qualitative and quantitative approaches, focusing on the macro level of socio-technical systems and their transition pathways. The research delves into the theoretical aspects of TIS and their implications for policy and industry, providing valuable insights into how technological, organizational, economic, and institutional innovations can contribute to a more environmentally sustainable economy.
+
+### 4: Geographical Perspectives in Sustainability Transitions
+These ten articles collectively focus on geographical perspectives in sustainability transitions, examining the spatial dimensions and multi-system interactions in transitioning socio-technical systems towards sustainability. The research primarily employs qualitative methods to study the dynamics of actor networks, urban experimentation, and niche development in various sectors and contexts. These contributions explore the importance of spatiality, place, and scale in understanding the complexities of sustainability transitions, while also considering the implications for policy, industry, and future research. By emphasizing the role of geography, this body of work helps to refine and extend the theoretical frameworks used in studying sustainability transitions.
+
+### 5: Sustainability Transitions and Grassroots Innovations
+Description: These articles focus on the role of grassroots innovations, community leadership, and governance in fostering sustainability transitions. They explore various aspects of socio-technical systems, multi-level governance, and alternative geographies of innovation that can facilitate the diffusion of environmentally sustainable practices. The research primarily employs qualitative case studies and draws on interdisciplinary perspectives from sociology, political science, and innovation studies. The articles contribute to both theoretical understanding and practical implications for policymakers, industry actors, and community leaders engaged in promoting sustainable transitions.
+
 
 # Knowledge Bases, Research Areas & Topics Interaction
 
@@ -621,7 +671,7 @@ g_inst <- el_inst %>% as_tbl_graph(directed = FALSE) %E>%
 
 ```{r, fig.height= 10, fig.width=15}
 # get biggest component
-components <- igraph::clusters(g_inst, mode="weak")
+components <- clusters(g_inst, mode="weak")
 biggest_cluster_id <- which.max(components$csize)
 vert_ids <- V(g_inst)[components$membership == biggest_cluster_id]
 igraph::induced_subgraph(g_inst, vert_ids)
