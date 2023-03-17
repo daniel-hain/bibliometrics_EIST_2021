@@ -451,7 +451,6 @@ json_lda %>% serVis(out.dir = paste0('output/topic_modelling/LDAviz_', str_to_lo
 # el_sim_topic <- text_lda_gamma %>%
 #   widyr::pairwise_similarity(document, topic, gamma, diag = FALSE, upper = TRUE)
 
-
 embeddings <- read_csv('data/data_text.csv') %>%
   select(UT) %>%
   bind_cols(read_csv('data/embeddings_specter.csv')) %>%
